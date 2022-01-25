@@ -92,8 +92,128 @@ set(_BOOST_MINOR_VERSION)
 FIND_PACKAGE(Boost 1.50
   COMPONENTS
     ${Boost_COMPONENTS}
-  REQUIRED
 )
+
+IF (NOT Boost_FOUND)
+  MESSAGE(STATUS "")
+  MESSAGE(STATUS "Boost not found. Fetching content inplace.")
+  MESSAGE(STATUS "")
+  FetchContent_Declare(
+    boostorg
+    GIT_REPOSITORY https://github.com/boostorg/boost.git
+    GIT_TAG boost-1.78.0
+    GIT_SHALLOW TRUE
+  )
+
+  set(BOOST_ENABLE_CMAKE ON)
+  set(BUILD_SHARED_LIBS OFF)
+  FetchContent_MakeAvailable(boostorg)
+
+  set(Boost_FOUND TRUE)
+  set(Boost_INCLUDE_DIRS
+    ${boostorg_SOURCE_DIR}
+    ${boostorg_BINARY_DIR}/include
+    ${boostorg_SOURCE_DIR}/libs/align/include
+    ${boostorg_SOURCE_DIR}/libs/algorithm/include
+    ${boostorg_SOURCE_DIR}/libs/asio/include
+    ${boostorg_SOURCE_DIR}/libs/assert/include
+    ${boostorg_SOURCE_DIR}/libs/assign/include
+    ${boostorg_SOURCE_DIR}/libs/bind/include
+    ${boostorg_SOURCE_DIR}/libs/config/include
+    ${boostorg_SOURCE_DIR}/libs/core/include
+    ${boostorg_SOURCE_DIR}/libs/concept_check/include
+    ${boostorg_SOURCE_DIR}/libs/container_hash/include
+    ${boostorg_SOURCE_DIR}/libs/detail/include
+    ${boostorg_SOURCE_DIR}/libs/endian/include
+    ${boostorg_SOURCE_DIR}/libs/fusion/include
+    ${boostorg_SOURCE_DIR}/libs/function/include
+    ${boostorg_SOURCE_DIR}/libs/foreach/include
+    ${boostorg_SOURCE_DIR}/libs/interprocess/include
+    ${boostorg_SOURCE_DIR}/libs/iterator/include
+    ${boostorg_SOURCE_DIR}/libs/integer/include
+    ${boostorg_SOURCE_DIR}/libs/logic/include
+    ${boostorg_SOURCE_DIR}/libs/pool/include
+    ${boostorg_SOURCE_DIR}/libs/math/include
+    ${boostorg_SOURCE_DIR}/libs/multi_index/include
+    ${boostorg_SOURCE_DIR}/libs/mpl/include
+    ${boostorg_SOURCE_DIR}/libs/move/include
+    ${boostorg_SOURCE_DIR}/libs/numeric/include
+    ${boostorg_SOURCE_DIR}/libs/numeric/ublas/include
+    ${boostorg_SOURCE_DIR}/libs/predef/include
+    ${boostorg_SOURCE_DIR}/libs/preprocessor/include
+    ${boostorg_SOURCE_DIR}/libs/range/include
+    ${boostorg_SOURCE_DIR}/libs/regex/include
+    ${boostorg_SOURCE_DIR}/libs/serialization/include
+    ${boostorg_SOURCE_DIR}/libs/spirit/include
+    ${boostorg_SOURCE_DIR}/libs/static_assert/include
+    ${boostorg_SOURCE_DIR}/libs/throw_exception/include
+    ${boostorg_SOURCE_DIR}/libs/test/include
+    ${boostorg_SOURCE_DIR}/libs/tuple/include
+    ${boostorg_SOURCE_DIR}/libs/type_index/include
+    ${boostorg_SOURCE_DIR}/libs/type_traits/include
+    ${boostorg_SOURCE_DIR}/libs/optional/include
+    ${boostorg_SOURCE_DIR}/libs/utility/include
+    ${boostorg_SOURCE_DIR}/libs/phoenix/include
+    ${boostorg_SOURCE_DIR}/libs/proto/include
+    ${boostorg_SOURCE_DIR}/libs/variant/include
+  )
+  # make target available outside
+  install(TARGETS
+    boost_algorithm
+    boost_align
+    boost_any
+    boost_array
+    boost_assert
+    boost_atomic
+    boost_bind
+    boost_chrono
+    boost_concept_check
+    boost_config
+    boost_container
+    boost_container_hash
+    boost_conversion
+    boost_core
+    boost_date_time
+    boost_detail
+    boost_exception
+    boost_function
+    boost_function_types
+    boost_fusion
+    boost_intrusive
+    boost_io
+    boost_iterator
+    boost_integer
+    boost_lexical_cast
+    boost_move
+    boost_mp11
+    boost_mpl
+    boost_numeric_conversion
+    boost_optional
+    boost_predef
+    boost_preprocessor
+    boost_ratio
+    boost_rational
+    boost_range
+    boost_regex
+    boost_smart_ptr
+    boost_static_assert
+    boost_system
+    boost_throw_exception
+    boost_tokenizer
+    boost_tuple
+    boost_type_index
+    boost_type_traits
+    boost_typeof
+    boost_unordered
+    boost_utility
+    boost_variant2
+    boost_winapi
+    boost_thread
+    boost_program_options
+    boost_filesystem
+    EXPORT wt-target-wt
+  )
+ENDIF()
 
 # Use IMPORTED targets if defined
 FOREACH(_target ${Boost_COMPONENTS})
