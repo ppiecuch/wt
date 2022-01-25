@@ -53,7 +53,6 @@ SET(Boost_DEBUG ON)
 SET(Boost_COMPONENTS
     program_options
     filesystem
-    format
     thread
 )
 
@@ -178,7 +177,6 @@ IF (NOT Boost_FOUND)
     boost_date_time
     boost_detail
     boost_exception
-    boost_format
     boost_function
     boost_function_types
     boost_fusion
