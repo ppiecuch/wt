@@ -35,7 +35,7 @@ public:
 
   /*! \brief Adds a button.
    */
-  void addButton(std::unique_ptr<WPushButton> button,
+  WPushButton *addButton(std::unique_ptr<WPushButton> button,
                  AlignmentFlag alignmentFlag = AlignmentFlag::Left);
 
   /*! \brief Adds a split button.
@@ -46,14 +46,14 @@ public:
    *
    * \sa setCompact()
    */
-  void addButton(std::unique_ptr<WSplitButton> button,
+  WSplitButton *addButton(std::unique_ptr<WSplitButton> button,
                  AlignmentFlag alignmentFlag = AlignmentFlag::Left);
 
   /*! \brief Adds a widget.
    *
    * The toolbar automatically becomes non-compact.
    */
-  void addWidget(std::unique_ptr<WWidget> widget,
+  WWidget *addWidget(std::unique_ptr<WWidget> widget,
 		 AlignmentFlag alignmentFlag = AlignmentFlag::Left);
 
   using WWidget::removeWidget;

@@ -35,7 +35,7 @@ void WToolBar::setOrientation(Orientation orientation)
     removeStyleClass("btn-group-vertical");
 }
 
-void WToolBar::addButton(std::unique_ptr<WPushButton> button,
+WPushButton *WToolBar::addButton(std::unique_ptr<WPushButton> button,
 			 AlignmentFlag alignmentFlag)
 {
   widgets_.push_back(button.get());
@@ -49,9 +49,11 @@ void WToolBar::addButton(std::unique_ptr<WPushButton> button,
       lastGroup()->setAttributeValue("style", "float:right;");
     lastGroup()->addWidget(std::move(button));
   }
+
+  return (WPushButton *)widgets_.back();
 }
 
-void WToolBar::addButton(std::unique_ptr<WSplitButton> button,
+WSplitButton *WToolBar::addButton(std::unique_ptr<WSplitButton> button,
 			 AlignmentFlag alignmentFlag)
 {
   widgets_.push_back(button.get());
@@ -61,9 +63,11 @@ void WToolBar::addButton(std::unique_ptr<WSplitButton> button,
   if (alignmentFlag == AlignmentFlag::Right)
     button->setAttributeValue("style", "float:right;");
   impl_->addWidget(std::move(button));
+
+  return (WSplitButton *)widgets_.back();
 }
 
-void WToolBar::addWidget(std::unique_ptr<WWidget> widget,
+WWidget *WToolBar::addWidget(std::unique_ptr<WWidget> widget,
 			 AlignmentFlag alignmentFlag)
 {
   widgets_.push_back(widget.get());
@@ -73,6 +77,8 @@ void WToolBar::addWidget(std::unique_ptr<WWidget> widget,
   if (alignmentFlag == AlignmentFlag::Right)
     widget->setAttributeValue("style", "float:right;");
   impl_->addWidget(std::move(widget));
+
+  return widgets_.back();
 }
 
 std::unique_ptr<WWidget> WToolBar::removeWidget(WWidget *widget)
