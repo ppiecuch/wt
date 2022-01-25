@@ -9,6 +9,7 @@ FIND_LIBRARY(UNWIND_LIB
   PATHS
       ${UNWIND_PREFIX}/lib
       /usr/lib
+      /opt/local/lib
   )
 
 IF(UNWIND_INCLUDE AND UNWIND_LIB)
@@ -16,13 +17,5 @@ IF(UNWIND_INCLUDE AND UNWIND_LIB)
   SET(UNWIND_INCLUDE_DIRS ${UNWIND_INCLUDE})
   SET(UNWIND_LIBRARIES ${UNWIND_LIB})
 ELSE(UNWIND_INCLUDE AND UNWIND_LIB)
-  MESSAGE(STATUS "")
-  MESSAGE(STATUS "Libunwind not found. Fetching content inplace.")
-  MESSAGE(STATUS "")
-  FetchContent_Declare(
-    unwind
-    GIT_REPOSITORY git://git.sv.gnu.org/libunwind.git
-    GIT_SHALLOW TRUE)
-  FetchContent_MakeAvailable(unwind)
   SET(UNWIND_FOUND FALSE)
 ENDIF(UNWIND_INCLUDE AND UNWIND_LIB)
