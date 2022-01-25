@@ -10,6 +10,8 @@ SET(CMAKE_MODULE_PATH
   ${WT_SOURCE_DIR}/cmake
 )
 
+SET(CMAKE_PREFIX_PATH "~/Qt/5.15/clang_64")
+
 SET(VERSION_SERIES 4)
 SET(VERSION_MAJOR 6)
 SET(VERSION_MINOR 1)
@@ -38,7 +40,7 @@ OPTION(ENABLE_POSTGRES "Build PostgreSQL backend for Wt::Dbo" ON)
 OPTION(ENABLE_FIREBIRD "Build FirebirdSQL backend for Wt::Dbo" ON)
 OPTION(ENABLE_MYSQL "Build mariadb/mysql backend for Wt::Dbo" ON)
 OPTION(ENABLE_MSSQLSERVER "Build Microsoft SQL Server backend for Wt::Dbo" ON)
-OPTION(ENABLE_QT4 "Build Qt4 interworking library (libwtwithqt)" ON)
+OPTION(ENABLE_QT4 "Build Qt4 interworking library (libwtwithqt)" OFF)
 OPTION(ENABLE_QT5 "Build Qt5 interworking library (libwtwithqt5)" ON)
 OPTION(ENABLE_SAML "Build built-in SAML service provider for Wt::Auth" OFF)
 OPTION(ENABLE_LIBWTTEST "Build Wt::Test" ON)
@@ -46,7 +48,7 @@ OPTION(ENABLE_LIBWTDBO "Build Wt::Dbo" ON)
 OPTION(WT_NO_STD_LOCALE "Build Wt to run on a system without std::locale support" OFF)
 OPTION(WT_NO_STD_WSTRING "Build Wt to run on a system without std::wstring support" OFF)
 OPTION(ENABLE_OPENGL "Build Wt with support for server-side opengl rendering" ON)
-OPTION(ENABLE_UNWIND "Build Wt with stacktrace support using libunwind" OFF)
+OPTION(ENABLE_UNWIND "Build Wt with stacktrace support using libunwind" ON)
 
 IF(NOT CMAKE_CXX_STANDARD)
   SET(CMAKE_CXX_STANDARD 14)
@@ -205,7 +207,7 @@ OPTION(DEBUG "Support for debugging, must be enabled also in wt_config.xml" OFF)
 IF(CYGWIN)
   OPTION(BUILD_TESTS "Build Wt tests" OFF)
 ELSE(CYGWIN)
-  OPTION(BUILD_TESTS "Build Wt tests" ON)
+  OPTION(BUILD_TESTS "Build Wt tests" OFF)
 ENDIF(CYGWIN)
 
 ADD_DEFINITIONS(-DWT_WITH_OLD_INTERNALPATH_API)
@@ -233,6 +235,13 @@ OPTION(CONNECTOR_HTTP "Compile in stand-alone httpd connector (libwthttp) ?" ON)
 SET(EXAMPLES_CONNECTOR wthttp CACHE STRING "Connector used for examples")
 
 include (CheckSymbolExists)
+include (FetchContent)
+
+# prefer static libs:
+IF(NOT WIN32)
+  LIST( REMOVE_ITEM CMAKE_FIND_LIBRARY_SUFFIXES   ".a" )
+  LIST( INSERT      CMAKE_FIND_LIBRARY_SUFFIXES 0 ".a" )
+ENDIF()
 
 find_package(PNG)
 
@@ -250,7 +259,15 @@ INCLUDE(cmake/WtFindGm.txt)
 INCLUDE(cmake/WtFindGL.txt)
 INCLUDE(cmake/WtFindSkia.txt)
 
-set(OPENSSL_ROOT_DIR ${SSL_PREFIX})
+IF(APPLE)
+  # This is a bug in CMake that causes it to prefer the system version over
+  # the one in the specified ROOT folder.
+  set(OPENSSL_ROOT_DIR /opt/local)
+  set(OPENSSL_CRYPTO_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libcrypto.a;${OPENSSL_ROOT_DIR}/lib/libz.a CACHE FILEPATH "" FORCE)
+  set(OPENSSL_SSL_LIBRARY ${OPENSSL_ROOT_DIR}/lib/libssl.a CACHE FILEPATH "" FORCE)
+ELSE(APPLE)
+  set(OPENSSL_ROOT_DIR ${SSL_PREFIX})
+ENDIF()
 find_package(OpenSSL)
 
 IF (ENABLE_SAML)
