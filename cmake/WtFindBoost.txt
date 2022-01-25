@@ -53,6 +53,7 @@ SET(Boost_DEBUG ON)
 SET(Boost_COMPONENTS
     program_options
     filesystem
+    format
     thread
 )
 
@@ -128,6 +129,7 @@ IF (NOT Boost_FOUND)
     ${boostorg_SOURCE_DIR}/libs/fusion/include
     ${boostorg_SOURCE_DIR}/libs/function/include
     ${boostorg_SOURCE_DIR}/libs/foreach/include
+    ${boostorg_SOURCE_DIR}/libs/format/include
     ${boostorg_SOURCE_DIR}/libs/interprocess/include
     ${boostorg_SOURCE_DIR}/libs/iterator/include
     ${boostorg_SOURCE_DIR}/libs/integer/include
@@ -176,6 +178,7 @@ IF (NOT Boost_FOUND)
     boost_date_time
     boost_detail
     boost_exception
+    boost_format
     boost_function
     boost_function_types
     boost_fusion
@@ -183,6 +186,7 @@ IF (NOT Boost_FOUND)
     boost_io
     boost_iterator
     boost_integer
+    boost_filesystem
     boost_lexical_cast
     boost_move
     boost_mp11
@@ -191,6 +195,7 @@ IF (NOT Boost_FOUND)
     boost_optional
     boost_predef
     boost_preprocessor
+    boost_program_options
     boost_ratio
     boost_rational
     boost_range
@@ -198,6 +203,7 @@ IF (NOT Boost_FOUND)
     boost_smart_ptr
     boost_static_assert
     boost_system
+    boost_thread
     boost_throw_exception
     boost_tokenizer
     boost_tuple
@@ -208,9 +214,6 @@ IF (NOT Boost_FOUND)
     boost_utility
     boost_variant2
     boost_winapi
-    boost_thread
-    boost_program_options
-    boost_filesystem
     EXPORT wt-target-wt
   )
 ENDIF()
