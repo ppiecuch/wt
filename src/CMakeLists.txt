@@ -717,4 +717,4 @@ IF(MSVC)
   TARGET_LINK_LIBRARIES(wt PRIVATE winmm)
 ENDIF(MSVC)
 
-SUBDIRS(isapi fcgi http)
+SUBDIRS(isapi fcgi http server)
