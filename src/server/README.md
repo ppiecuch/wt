@@ -3,7 +3,8 @@
 Leaderboards with PostgreSQL (YougbyteDB) backend.
 
 Installation:
-  * autoconf, automake, libtool, libunwind
+  * autoconf, automake, libtool (_libstatgrab_)
+  * libunwind
 
 #### Reference
 
