@@ -17,25 +17,35 @@
 #include <Wt/WTable.h>
 #include <Wt/WTableCell.h>
 
+using namespace Wt;
+
 #include "application.h"
 
 #include "../common/utils.h"
 #include "../common/controller.h"
+#include "../sysmon/sysmon.h"
 #include "../rest/resources.h"
+#include "../rest/rssfeed.h"
 
 #include <tuple>
 #include <functional>
 #include <iostream>
 
 GameServerApplication::GameServerApplication(const WEnvironment& env)
-  : WApplication(env), user(""), pass(""), loginDone(false){
-
+  : WApplication(env)
+  , user(""), pass("")
+  , loginDone(false)
+  , sysmon(std::make_unique<SysMon>())
+{
   showLogin();
 }
 
-void GameServerApplication::showLogin(){
+void GameServerApplication::handleInternalPath(const std::string &internalPath) {
+}
 
-  setTitle("Stock Market Application : Trader Login");
+void GameServerApplication::showLogin() {
+
+  setTitle("Game Server : Login");
 
   auto vertDummy = root()->addWidget(std::make_unique<WContainerWidget>());
   vertDummy->resize(275, 275);
@@ -93,22 +103,13 @@ void GameServerApplication::showLogin(){
   }));
 }
 
-void GameServerApplication::loginHandler() {
-  CommonController cc;
-  OperationStatus op_stat;
-  auto username = nameEdit_->text();
-  auto password = passEdit_->text();
+void GameServerApplication::showSysmon() {
+  setTitle("Game Server : Monitor");
 
-  if (cc.areValidCredentials(username.toUTF8(), password.toUTF8(), op_stat)) {
-    loginDone = true;
-    user = username.toUTF8();
-    pass = password.toUTF8();
-    root()->clear();
-    showLandingPage();
-  } else {
-    loginDone = false;
-    message_->setText("Login failed. Try again.");
-  }
+  auto container = root()->addWidget(std::make_unique<WContainerWidget>());
+  container->setId("SysMonPage");
+  container->addWidget(sysmon->layout());
+  root()->setContentAlignment(Wt::AlignmentFlag::Center);
 }
 
 void GameServerApplication::showLandingPage() {
@@ -176,25 +177,29 @@ void GameServerApplication::showLandingPage() {
   }));
 }
 
-void GameServerApplication::handleBuy() {
+void GameServerApplication::loginHandler() {
+  CommonController cc;
+  OperationStatus op_stat;
+  auto username = nameEdit_->text();
+  auto password = passEdit_->text();
 
+  if (cc.areValidCredentials(username.toUTF8(), password.toUTF8(), op_stat)) {
+    loginDone = true;
+    user = username.toUTF8();
+    pass = password.toUTF8();
+    root()->clear();
+    showLandingPage();
+  } else {
+    loginDone = false;
+    message_->setText("Login failed. Try again.");
+  }
 }
 
-void GameServerApplication::handleSell() {
-
-}
-
-void GameServerApplication::handleQuote() {
-
-}
-
-void GameServerApplication::handlePf() {
-
-}
-
-void GameServerApplication::handleTrx() {
-
-}
+void GameServerApplication::handleBuy() { }
+void GameServerApplication::handleSell() { }
+void GameServerApplication::handleQuote() { }
+void GameServerApplication::handlePf() { }
+void GameServerApplication::handleTrx() { }
 
 inline static void report_exception(const char *what) {
   std::cerr << "> Server exception:"
@@ -207,7 +212,7 @@ inline static void report_exception(const char *what) {
     << std::endl;
 }
 
-std::unique_ptr<Wt::WApplication> createApplication(const WEnvironment& env) {
+std::unique_ptr<Wt::WApplication> createApplication(const WEnvironment& env, Dbo::SqlConnectionPool *connectionPool) {
   std::cerr << "> Creating application for IP " << env.clientAddress() << std::endl;
   return std::make_unique<GameServerApplication>(env);
 }
@@ -218,20 +223,19 @@ int app_landing(int argc, char **argv) {
     try {
       server.setServerConfiguration(argc, argv);
 
-      Registration dr;
-      server.addResource(&dr, "/RegisterTrader");
-      Quote qu;
-      server.addResource(&qu, "/Quote");
-      Transactions tx;
-      server.addResource(&tx, "/Transactions");
-      PortfolioList pf;
-      server.addResource(&pf, "/PortfolioList");
-      Buy by;
-      server.addResource(&by, "/Buy");
-      Sell sl;
-      server.addResource(&sl, "/Sell");
+      std::unique_ptr<Dbo::SqlConnectionPool> db = Session::createConnectionPool();
 
-      server.addEntryPoint(EntryPointType::Application, createApplication);
+      ApiService api(db.get());
+      server.addResource(&api, "/api");
+      server.addResource(&api, "/api/${action}/${arg}");
+
+      RSSFeed rss(db.get(), "Game Server journal", "", "Game Server latest events.");
+      server.addResource(&rss, "/rss");
+      server.addResource(&rss, "/rss/last/${num}");
+      server.addResource(&rss, "/rss/from/${timestamp}");
+
+      server.addEntryPoint(EntryPointType::Application,
+                           std::bind(&createApplication, std::placeholders::_1, db.get()));
 
       if (server.start()) {
         WServer::waitForShutdown();
@@ -245,13 +249,13 @@ int app_landing(int argc, char **argv) {
       return 1;
     }
   } catch (WServer::Exception& e) {
-      report_exception(e.what());
-      return 1;
+    report_exception(e.what());
+    return 1;
   } catch (std::exception& e) {
-      report_exception(e.what());
-      return 1;
+    report_exception(e.what());
+    return 1;
   } catch (...) {
-      std::cerr << "Unknown server exception" << std::endl;
+    std::cerr << "Unknown server exception" << std::endl;
     return 1;
   }
   return 0;

@@ -7,21 +7,6 @@
 
 using namespace Wt;
 
-static void log(const std::string &entry_type, const std::string &level, const std::string &message){
-  WLogger wl;
-  configLogger(wl);
-
-  WLogEntry entry = wl.entry(entry_type);
-  entry << WLogger::timestamp << WLogger::sep << level << WLogger::sep << message;
-}
-
-
-const char* SQLITE_DB_NAME = "server.db";
-
-const char* getSQLiteDBName() {
-  return SQLITE_DB_NAME;
-}
-
 const char* error_msgs[10] = {
   "Allowable request content length exceeded",
   "Bad request, missing username/password specification",
@@ -35,22 +20,11 @@ const char* error_msgs[10] = {
   "Bad request, portfolio does not have sufficient quantity of stock"
 };
 
-void configLogger(WLogger& logger) {
- logger.addField("datetime", false);
- logger.addField("type", false);
- logger.addField("message", true);
- 
- logger.setFile("server.log");
-}
-
-void LogError(const char *msg) { log("fatal", "ERROR", msg); }
+void LogError(const std::string &msg) { log("error") << msg; }
+void LogInfo(const std::string &msg) { log("info") << msg; }
 
 void return_bad_request(Http::Response& resp, err_code ec){
-  WLogger wl;
-  configLogger(wl);
-
-  WLogEntry entry = wl.entry("fatal");
-  entry << WLogger::timestamp << WLogger::sep << "ERROR" << WLogger::sep << error_msgs[ec];
+  LogError(error_msgs[ec]);
 
   resp.setMimeType("application/json");
   std::ostream& out = resp.out();
@@ -58,11 +32,7 @@ void return_bad_request(Http::Response& resp, err_code ec){
 }
 
 void return_bad_request_Exc(Http::Response& resp, err_code ec, const std::string& excep_msg) {
-  WLogger wl;
-  configLogger(wl);
-
-  WLogEntry entry = wl.entry("fatal");
-  entry << WLogger::timestamp << WLogger::sep << "ERROR" << WLogger::sep << error_msgs[ec] + std::string(":") + excep_msg;
+  LogError(error_msgs[ec] + std::string(":") + excep_msg);
 
   resp.setMimeType("application/json");
   std::ostream& out = resp.out();

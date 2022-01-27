@@ -10,6 +10,8 @@
 
 #include <string>
 
+#include "session.h"
+
 namespace Wt {
   class WLineEdit;
   class WText;
@@ -18,11 +20,10 @@ namespace Wt {
 
 using namespace Wt;
 
-class GameServerApplication : public WApplication {
-public:
-  GameServerApplication(const WEnvironment& env);
+class SysMon;
 
-private:
+class GameServerApplication : public WApplication {
+
   WLineEdit* nameEdit_;
   WLineEdit* passEdit_;
   WText* message_;
@@ -43,10 +44,12 @@ private:
 
   bool loginDone;
 
-  void showLogin();
   void loginHandler();
+  void handleInternalPath(const std::string &internalPath);
 
+  void showLogin();
   void showLandingPage();
+  void showSysmon();
 
   void logout() {
     loginDone = false;
@@ -55,11 +58,16 @@ private:
     quit();
   }
 
+  std::unique_ptr<SysMon> sysmon;
+
   void handleQuote();
   void handlePf();
   void handleTrx();
   void handleBuy();
   void handleSell();
+
+public:
+  GameServerApplication(const WEnvironment& env);
 };
 
 int app_landing(int argc, char **argv);

@@ -6,7 +6,9 @@
 #ifndef SYSMON
 #define SYSMON
 
-#include <Wt/WContainerWidget.h>
+#include <Wt/WWidget.h>
+
+using namespace Wt;
 
 #include <memory>
 
@@ -14,22 +16,19 @@ namespace Wt {
   class WWidget;
 }
 
-class SysMon : public Wt::WContainerWidget
-{
+class SysMon {
 private:
-    struct Impl;
-    std::unique_ptr<Impl> pimpl;
+  struct Impl;
+  std::unique_ptr<Impl> pimpl;
 
 public:
-    explicit SysMon();
-    virtual ~SysMon();
+  std::unique_ptr<WWidget> layout();
 
-public:
-    void Pause();
-    void Resume();
+  void pause();
+  void resume();
 
-private:
-    std::unique_ptr<Wt::WWidget> Layout();
+  explicit SysMon();
+  virtual ~SysMon();
 };
 
 #endif /* SYSMON */

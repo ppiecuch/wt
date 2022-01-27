@@ -42,9 +42,9 @@ public:
 void return_bad_request(Wt::Http::Response& resp, err_code ec);
 void return_bad_request_Exc(Wt::Http::Response& resp, err_code ec, const std::string& exc_msg);
 
-void LogError(const char *msg);
+void LogInfo(const std::string &msg);
+void LogError(const std::string &msg);
 
-void configLogger(Wt::WLogger& logger);
 bool readFile(const std::string &file, std::string &out_data);
 std::string dateTimeString(const time_t rawTime, bool utc = true);
 std::string secondsToHumanReadableTime(const time_t seconds);

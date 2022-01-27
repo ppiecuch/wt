@@ -20,10 +20,7 @@ namespace Wt {
 // Needed because some Wt include file brings in boost::placeholders clash.
 namespace sph = std::placeholders;
 
-/**
-Exception thrown in case of error by UrlRouter operations.
-
- */
+// Exception thrown in case of error by UrlRouter operations.
 class UrlRouterError : public std::runtime_error
 {
 public:
@@ -56,7 +53,7 @@ class View // probably inherit from a Wt view class
     void articledetail(const std::string& arg1, const std::string& arg2,
                        const std::string& arg3);
 
-    UrlRouter<Mock>* _r;
+    UrlRouter<View>* _r;
 
 View()
 {
@@ -107,12 +104,12 @@ public:
      *
      * @throw UrlRouterError if any of `parent` or `handler` is null.
      */
-    UrlRouter(Wt::WApplication* parent, H* handler) : _handler(handler)
+    UrlRouter(Wt::WApplication *app, H *handler) : _handler(handler)
     {
-      if (!parent)  { throw UrlRouterError("NULL parent"); }
-      if (!handler) { throw UrlRouterError("NULL handler"); }
+      if (!app)     { throw UrlRouterError("Null application"); }
+      if (!handler) { throw UrlRouterError("Null handler"); }
 
-      parent->internalPathChanged()
+      app->internalPathChanged()
               .connect(this, &UrlRouter::onInternalPathChange);
     }
 
@@ -123,7 +120,7 @@ public:
      * to be called if the incoming ULR matches `pattern`, where `pattern` has 0
      * matching groups.
      */
-    void add(const std::string& pattern, void (H::* pm)())
+    void add(const std::string &pattern, void (H::*pm)())
     {
       boost::regex regex(pattern);
       check_groups_args(regex.mark_count(), 0);
@@ -136,7 +133,7 @@ public:
      * to be called if the incoming ULR matches `pattern`, where `pattern` has 1
      * matching group. The matching groups will be passed as arguments of `pm`.
      */
-    void add(const std::string& pattern, void (H::* pm)(const std::string& arg1))
+    void add(const std::string &pattern, void (H::* pm)(const std::string& arg1))
     {
       boost::regex regex(pattern);
       check_groups_args(regex.mark_count(), 1);
@@ -162,7 +159,7 @@ public:
      * to be called if the incoming ULR matches `pattern`, where `pattern` has 3
      * matching groups. The matching groups will be passed as arguments of `pm`.
      */
-    void add(const std::string& pattern, void (H::* pm)(const std::string& arg1, const std::string& arg2, const std::string& arg3))
+    void add(const std::string &pattern, void (H::*pm)(const std::string &arg1, const std::string &arg2, const std::string &arg3))
     {
       boost::regex regex(pattern);
       check_groups_args(regex.mark_count(), 3);
@@ -176,7 +173,7 @@ private:
     UrlRouter(const UrlRouter&);
     UrlRouter& operator=(const UrlRouter&);
 
-    void onInternalPathChange(const std::string& path)
+    void onInternalPathChange(const std::string &path)
     {
         /*
          * Iterate through the regexes in the same order as they have been added
