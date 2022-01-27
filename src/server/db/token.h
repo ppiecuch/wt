@@ -2,34 +2,32 @@
 #define DB_TOKEN
 
 #include <Wt/WDate.h>
-
 #include <Wt/Dbo/Types.h>
 #include <Wt/Dbo/WtSqlTraits.h>
+
+using namespace Wt;
 
 #include <string>
 
 class User;
 
-namespace dbo = Wt::Dbo;
-
-class Token : public dbo::Dbo<Token> {
+class Token : public Wt::Dbo::Dbo<Token> {
 public:
-  dbo::ptr<User> user;
+  Wt::Dbo::ptr<User> user;
 
-  std::string    value;
-  Wt::WDateTime  expires;
+  std::string value;
+  WDateTime expires;
 
   template<class Action>
-  void persist(Action& a)
-  {
-    dbo::field(a, value,   "value");
-    dbo::field(a, expires, "expires");
+  void persist(Action &a) {
+    Wt::Dbo::field(a, value,   "value");
+    Wt::Dbo::field(a, expires, "expires");
 
-    dbo::belongsTo(a, user, "user");
+    Wt::Dbo::belongsTo(a, user, "user");
   }
 
   Token();
-  Token(const std::string& value, const Wt::WDateTime& expires);
+  Token(const std::string &value, const WDateTime &expires);
 };
 
 DBO_EXTERN_TEMPLATES(Token)

@@ -28,6 +28,8 @@ using namespace Wt;
 #endif // _XOPEN_CRYPT
 #endif
 
+#include "../common/utils.h"
+
 namespace {
 
 #ifdef HAVE_CRYPT
@@ -85,13 +87,42 @@ void Session::configureAuth() {
 }
 
 std::unique_ptr<Dbo::SqlConnectionPool> Session::createConnectionPool() {
-  auto connection = std::make_unique<Dbo::backend::Sqlite3>("server.db");
+  static const char *_backends[] = {
 #ifdef DEBUG
-  connection->setProperty("show-queries", "true");
+    "sq://server-debug.db"
+    "pq://127.0.0.1",
+#else
+    "pq://127.0.0.1",
+    "sq://server.db",
 #endif
-  connection->setDateTimeStorage(Dbo::SqlDateTimeType::DateTime, Dbo::backend::DateTimeStorage::PseudoISO8601AsText);
+    nullptr
+  };
 
-  return std::make_unique<Dbo::FixedSqlConnectionPool>(std::move(connection), 10);
+  for (auto conn = _backends; *conn; conn++) {
+    if (strncmp(*conn, "pq://", 5) == 0) {
+#ifdef DBO_POSTGRES
+      auto result = std::make_unique<Dbo::backend::Postgres>(*conn+5);
+      if (result->connection() != nullptr) {
+        result->setDateTimeStorage(Dbo::SqlDateTimeType::DateTime, Dbo::backend::DateTimeStorage::PseudoISO8601AsText);
+#ifdef DEBUG
+      result->setProperty("show-queries", "true");
+#endif
+      return std::make_unique<Dbo::FixedSqlConnectionPool>(std::move(result), 10);
+      }
+#endif
+    } else if (strncmp(*conn, "sq://", 5) == 0) {
+      auto result = std::make_unique<Dbo::backend::Sqlite3>(*conn+5);
+      if (result->connection() != nullptr) {
+        result->setDateTimeStorage(Dbo::SqlDateTimeType::DateTime, Dbo::backend::DateTimeStorage::PseudoISO8601AsText);
+#ifdef DEBUG
+        result->setProperty("show-queries", "true");
+#endif
+        return std::make_unique<Dbo::FixedSqlConnectionPool>(std::move(result), 5);
+      }
+    } else
+      LogInfo(std::string("Unknow connection: ") + *conn);
+  }
+  throw std::runtime_error("Unable to open database");
 }
 
 Session::Session(Dbo::SqlConnectionPool *connectionPool) : connectionPool_(connectionPool) {

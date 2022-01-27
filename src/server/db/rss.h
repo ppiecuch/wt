@@ -10,8 +10,6 @@ using namespace Wt;
 
 #include <string>
 
-namespace dbo = Wt::Dbo;
-
 class Rss {
 public:
   WString title;
@@ -22,17 +20,17 @@ public:
   std::string permaLink() const;
 
   template<class Action>
-  void persist(Action& a) {
-    dbo::field(a, date, "date");
-    dbo::field(a, title, "title");
-    dbo::field(a, body, "body");
+  void persist(Action &a) {
+    Dbo::field(a, date, "date");
+    Dbo::field(a, title, "title");
+    Dbo::field(a, body, "body");
   }
 
   Rss();
   Rss(const WString &title, const WString &body, const WDateTime &date);
 };
 
-typedef dbo::collection<dbo::ptr<Rss>> Journal;
+typedef Dbo::collection<Dbo::ptr<Rss>> Journal;
 
 DBO_EXTERN_TEMPLATES(Rss)
 

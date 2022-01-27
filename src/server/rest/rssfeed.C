@@ -47,14 +47,14 @@ void RSSFeed::handleRequest(const Http::Request &request, Http::Response &respon
     "    <link>" << Utils::htmlEncode(url) << "</link>\n"
     "    <description>" << Utils::htmlEncode(description_) << "</description>\n";
 
-  dbo::Transaction t(session);
+  Dbo::Transaction t(session);
 
   Journal events = session.find<Rss>
     ("order by date desc "
      "limit ?").bind(10);
 
   for (auto i = events.begin(); i != events.end(); ++i) {
-    dbo::ptr<Rss> rss = *i;
+    Dbo::ptr<Rss> rss = *i;
 
     std::string permaLink = url + "/" + rss->permaLink();
 

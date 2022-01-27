@@ -227,7 +227,7 @@ int app_landing(int argc, char **argv) {
 
       ApiService api(db.get());
       server.addResource(&api, "/api");
-      server.addResource(&api, "/api/${action}/${arg}");
+      server.addResource(&api, "/api/${game}/${subindex}/${action}/${arg}");
 
       RSSFeed rss(db.get(), "Game Server journal", "", "Game Server latest events.");
       server.addResource(&rss, "/rss");

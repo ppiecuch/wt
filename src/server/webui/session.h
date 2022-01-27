@@ -40,7 +40,7 @@ public:
   static const Auth::AbstractPasswordService &passwordAuth();
   static const std::vector<const Auth::OAuthService *> &oAuth();
 
-  static std::unique_ptr<dbo::SqlConnectionPool> createConnectionPool();
+  static std::unique_ptr<Dbo::SqlConnectionPool> createConnectionPool();
 
   Session(Dbo::SqlConnectionPool *connectionPool);
   ~Session();

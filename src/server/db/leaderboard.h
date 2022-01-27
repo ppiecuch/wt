@@ -47,6 +47,7 @@ public:
     Dbo::field(a, display, "display");
     Dbo::field(a, value, "value");
 
+    Dbo::hasMany(a, scores, dbo::ManyToOne,  "score");
     Dbo::belongsTo(a, leaderBoard, "leaderboard");
   }
 

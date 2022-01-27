@@ -10,12 +10,10 @@
 
 using namespace Wt;
 
-namespace dbo = Wt::Dbo;
-
 class User;
 
 typedef Auth::Dbo::AuthInfo<User> AuthInfo;
-typedef dbo::collection< dbo::ptr<User> > Users;
+typedef Dbo::collection<Dbo::ptr<User>> Users;
 
 class User {
 public:
@@ -23,14 +21,14 @@ public:
   int gamesPlayed;
   long long score;
   WDateTime lastGame;
-  dbo::collection<dbo::ptr<AuthInfo>> authInfos;
+  Dbo::collection<Dbo::ptr<AuthInfo>> authInfos;
 
   template<class Action>
-  void persist(Action& a) {
-    dbo::field(a, gamesPlayed, "gamesPlayed");
-    dbo::field(a, score, "score");
-    dbo::field(a, lastGame, "lastGame");
-    dbo::hasMany(a, authInfos, dbo::ManyToOne, "user");
+  void persist(Action &a) {
+    Dbo::field(a, gamesPlayed, "gamesPlayed");
+    Dbo::field(a, score, "score");
+    Dbo::field(a, lastGame, "lastGame");
+    Dbo::hasMany(a, authInfos, Dbo::ManyToOne, "user");
   }
 
   User();
