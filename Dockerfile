@@ -12,7 +12,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends apt-transport-https ca-certificates locales \
   && update-ca-certificates \
   && apt-get install -y --no-install-recommends curl git pkg-config autogen autoconf automake libtool make cmake g++ \
-  && apt-get install -y --no-install-recommends libboost-dev libboost-program-options-dev libboost-filesystem-dev libboost-thread-dev libunwind-dev libstatgrab-dev liblzma-dev libssl-dev \
+  && apt-get install -y --no-install-recommends libboost-dev libboost-program-options1.71-dev libboost-filesystem1.71-dev libboost-thread1.71-dev libunwind-dev libstatgrab-dev liblzma-dev libssl-dev \
   && sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
   && dpkg-reconfigure --frontend=noninteractive locales \
   && update-locale LANG=en_US.UTF-8 \
@@ -34,7 +34,7 @@ MAINTAINER Pawel Piecuch <piecuch.pawel@gmail.com>
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends supervisor \
-  && apt-get install -y --no-install-recommends libboost libboost-program-options libboost-filesystem libboost-thread libunwind libstatgrab liblzma libssl \
+  && apt-get install -y --no-install-recommends libboost-program-options1.71 libboost-filesystem1.71 libboost-thread1.71 liblzma5 libstatgrab10 libunwind8 \
   && apt-get purge --auto-remove -y && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
