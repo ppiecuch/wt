@@ -4,7 +4,9 @@
 #include <Wt/Dbo/Types.h>
 #include <Wt/Dbo/WtSqlTraits.h>
 
-namespace Wt;
+using namespace Wt;
+
+#include "user.h"
 
 class SubIndex;
 class Score;
@@ -26,7 +28,7 @@ public:
     Dbo::field(a, created, "created");
     Dbo::field(a, modified, "modified");
 
-    Dbo::hasMany(a, categories, dbo::ManyToOne,  "leaderboard");
+    Dbo::hasMany(a, categories, Dbo::ManyToOne,  "leaderboard");
   }
 
   Leaderboard() { }
@@ -47,7 +49,7 @@ public:
     Dbo::field(a, display, "display");
     Dbo::field(a, value, "value");
 
-    Dbo::hasMany(a, scores, dbo::ManyToOne,  "score");
+    Dbo::hasMany(a, scores, Dbo::ManyToOne,  "score");
     Dbo::belongsTo(a, leaderBoard, "leaderboard");
   }
 

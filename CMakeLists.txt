@@ -16,17 +16,10 @@ SET(VERSION_SERIES 4)
 SET(VERSION_MAJOR 6)
 SET(VERSION_MINOR 1)
 
-IF(NOT SHARED_LIBS)
-  IF(WIN32)
-    OPTION(SHARED_LIBS "Compile shared libraries" OFF)
-  ELSE(WIN32)
-    OPTION(SHARED_LIBS "Compile shared libraries" ON)
-  ENDIF(WIN32)
-ENDIF(NOT SHARED_LIBS)
-
 #
 # Various things that must be configured by the user or packager ...
 #
+OPTION(SHARED_LIBS "Compile shared libraries" OFF)
 OPTION(BUILD_EXAMPLES "Build examples" ON)
 OPTION(INSTALL_DOCUMENTATION "Install documentation (tutorials and reference)" OFF)
 OPTION(INSTALL_EXAMPLES "Install examples (binaries and source)" OFF)
@@ -288,7 +281,7 @@ ENDIF (ENABLE_PANGO)
 INCLUDE(cmake/WtFindSystemLibraries.txt)
 
 IF(ENABLE_QT4)
-  FIND_PACKAGE(Qt4)
+  FIND_PACKAGE(Qt4 QUIET)
 
   IF(QT_FOUND)
     INCLUDE(${QT_USE_FILE})
@@ -296,7 +289,7 @@ IF(ENABLE_QT4)
 ENDIF(ENABLE_QT4)
 
 IF(ENABLE_QT5)
-  FIND_PACKAGE(Qt5Core)
+  FIND_PACKAGE(Qt5Core QUIET)
 ENDIF(ENABLE_QT5)
 
 set(WT_THREAD_LIB "")
