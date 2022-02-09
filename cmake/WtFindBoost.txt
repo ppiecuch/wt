@@ -107,6 +107,9 @@ IF (NOT Boost_FOUND)
 
   set(BOOST_ENABLE_CMAKE ON)
   set(BUILD_SHARED_LIBS OFF)
+  set(CMAKE_C_VISIBILITY_PRESET default)
+  set(CMAKE_CXX_VISIBILITY_PRESET default)
+  set(CMAKE_VISIBILITY_INLINES_HIDDEN NO)
   FetchContent_MakeAvailable(boostorg)
 
   set(Boost_FOUND TRUE)

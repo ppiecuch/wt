@@ -32,6 +32,9 @@ WORKDIR /var/source
 FROM ubuntu:20.04
 MAINTAINER Pawel Piecuch <piecuch.pawel@gmail.com>
 
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG en_US.UTF-8
+
 RUN apt-get update \
   && apt-get install -y --no-install-recommends supervisor \
   && apt-get install -y --no-install-recommends libboost-program-options1.71 libboost-filesystem1.71 libboost-thread1.71 liblzma5 libstatgrab10 libunwind8 \

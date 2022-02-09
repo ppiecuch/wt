@@ -227,6 +227,13 @@ int app_landing(int argc, char **argv) {
 
       ApiService api(db.get());
       server.addResource(&api, "/api");
+
+      // GET /api/mysticmine/register/ppiecuch -> token
+      // GET /api/mysticmine/retrive/<email> -> token
+
+      // GET /api/mysticmine/normal/top/10
+      // UPDATE /api/mysticmine/normal/ppiecuch/<token>/1234
+
       server.addResource(&api, "/api/${game}/${subindex}/${action}/${arg}");
 
       RSSFeed rss(db.get(), "Game Server journal", "", "Game Server latest events.");
