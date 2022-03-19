@@ -120,6 +120,12 @@ public:
    */
   WFileDropWidget();
 
+#ifndef WT_TARGET_JAVA
+  /*! \brief Destructor
+   */
+  ~WFileDropWidget();
+#endif
+
   /*! \brief Returns the vector of uploads managed by this widget.
    *
    * The files in this vector are handled sequentially by the widget. All 
@@ -128,9 +134,13 @@ public:
    * value of WFileDropWidget::File::uploadFinished(). The other files are
    * still being handled.
    *
+   * \remark Since version 4.7.0, this method returns a copy of the vector
+   * because we changed the internal vector to hold values of type
+   * std::unique_ptr.
+   *
    * \sa currentIndex()
    */
-  const std::vector<File*>& uploads() const { return uploads_; }
+  std::vector<File*> uploads() const;
 
   /*! \brief Return the index of the file that is currently being handled.
    *
@@ -267,7 +277,7 @@ private:
 
   WMemoryResource *uploadWorkerResource_;
   class WFileDropUploadResource;
-  WFileDropUploadResource *resource_;
+  std::unique_ptr<WFileDropUploadResource> resource_;
   unsigned currentFileIdx_;
 
   static const std::string WORKER_JS;
@@ -295,7 +305,7 @@ private:
   Signal< File*, ::uint64_t > tooLarge_;
   Signal<File*> uploadFailed_;
   
-  std::vector<File*> uploads_;
+  std::vector<std::unique_ptr<File> > uploads_;
 
   static const int BIT_HOVERSTYLE_CHANGED  = 0;
   static const int BIT_ACCEPTDROPS_CHANGED = 1;

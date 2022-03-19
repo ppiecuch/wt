@@ -18,18 +18,14 @@
 #include "Wt/Dbo/Logger.h"
 #include "Wt/Dbo/StringStream.h"
 
-#include "Wt/Date/date.h"
+#include "Wt/cpp20/date.hpp"
 
 #include <iostream>
+#include <locale>
 #include <vector>
 #include <sstream>
 #include <cstring>
 
-#ifdef WT_WIN32
-#define snprintf _snprintf
-#define timegm _mkgmtime
-#include <ctime>
-#endif
 #include <mysql.h>
 #include <errmsg.h>
 
@@ -43,22 +39,6 @@
 #else
 #define WT_MY_BOOL my_bool
 #endif
-
-namespace {
-#ifndef WT_WIN32
-  thread_local std::tm local_tm;
-#endif
-
-  std::tm *thread_local_gmtime(const time_t *timep)
-  {
-#ifdef WT_WIN32
-    return std::gmtime(timep); // Already returns thread-local pointer
-#else // !WT_WIN32
-    gmtime_r(timep, &local_tm);
-    return &local_tm;
-#endif // WT_WIN32
-  }
-}
 
 namespace Wt {
   namespace Dbo {
@@ -279,17 +259,23 @@ class MySQLStatement final : public SqlStatement
       if (column >= paramCount_)
         throw MySQLException(std::string("Try to bind too much?"));
 
-      std::time_t t = std::chrono::system_clock::to_time_t(value);
-      std::tm *tm = thread_local_gmtime(&t);
-      char mbstr[100];
-      std::strftime(mbstr, sizeof(mbstr), "%Y-%b-%d %H:%M:%S", tm);
-      LOG_DEBUG(this << " bind " << column << " " << mbstr);
+#ifdef WT_DEBUG_ENABLED
+      if (WT_LOGGING("debug", WT_LOGGER)) {
+        using namespace cpp20::date;
+        std::ostringstream ss;
+        ss.imbue(std::locale::classic());
+        ss << value;
+        WT_LOG("debug") << WT_LOGGER << ": " << this << " bind " << column << " " << ss.str();
+      }
+#endif
 
       MYSQL_TIME*  ts = (MYSQL_TIME*)malloc(sizeof(MYSQL_TIME));
 
-      ts->year = tm->tm_year + 1900;
-      ts->month = tm->tm_mon + 1;
-      ts->day = tm->tm_mday;
+      auto day_tp = cpp20::date::floor<cpp20::date::days>(value);
+      cpp20::date::year_month_day date(day_tp);
+      ts->year = static_cast<int>(date.year());
+      ts->month = static_cast<unsigned>(date.month());
+      ts->day = static_cast<unsigned>(date.day());
       ts->neg = 0;
 
       if (type == SqlDateTimeType::Date){
@@ -301,12 +287,13 @@ class MySQLStatement final : public SqlStatement
 
       } else{
         in_pars_[column].buffer_type = MYSQL_TYPE_DATETIME;
-        ts->hour = tm->tm_hour;
-        ts->minute = tm->tm_min;
-        ts->second = tm->tm_sec;
+
+        auto time = cpp20::date::make_time(value - day_tp);
+        ts->hour = time.hours().count();
+        ts->minute = time.minutes().count();
+        ts->second = time.seconds().count();
         if(conn_.getFractionalSecondsPart() > 0){
-            std::chrono::milliseconds ms = std::chrono::duration_cast<std::chrono::milliseconds>(value.time_since_epoch());
-            ts->second_part = (unsigned long) ms.count()%1000;
+            ts->second_part = std::chrono::duration_cast<std::chrono::microseconds>(time.subseconds()).count();
         } else
             ts->second_part = 0;
       }
@@ -314,7 +301,6 @@ class MySQLStatement final : public SqlStatement
       in_pars_[column].buffer = ts;
       in_pars_[column].length = nullptr;
       in_pars_[column].is_null = nullptr;
-
      }
 
     virtual void bind(int column, const std::chrono::duration<int, std::milli>& value) override
@@ -323,10 +309,10 @@ class MySQLStatement final : public SqlStatement
         throw MySQLException(std::string("Try to bind too much?"));
 
       auto absValue = value < std::chrono::duration<int, std::milli>::zero() ? -value : value;
-      auto hours = date::floor<std::chrono::hours>(absValue);
-      auto minutes = date::floor<std::chrono::minutes>(absValue) - hours;
-      auto seconds = date::floor<std::chrono::seconds>(absValue) - hours - minutes;
-      auto msecs = date::floor<std::chrono::milliseconds>(absValue) - hours - minutes - seconds;
+      auto hours = cpp20::date::floor<std::chrono::hours>(absValue);
+      auto minutes = cpp20::date::floor<std::chrono::minutes>(absValue) - hours;
+      auto seconds = cpp20::date::floor<std::chrono::seconds>(absValue) - hours - minutes;
+      auto msecs = cpp20::date::floor<std::chrono::milliseconds>(absValue) - hours - minutes - seconds;
 
       LOG_DEBUG(this << " bind " << column << " " << value.count() << "ms");
 
@@ -713,28 +699,27 @@ class MySQLStatement final : public SqlStatement
 
       MYSQL_TIME* ts = static_cast<MYSQL_TIME*>(out_pars_[column].buffer);
 
+      auto day_tp = cpp20::date::sys_days(cpp20::date::year(ts->year) / ts->month / ts->day);
       if (type == SqlDateTimeType::Date){
-        std::tm tm = std::tm();
-        tm.tm_year = ts->year - 1900;
-        tm.tm_mon = ts->month - 1;
-        tm.tm_mday = ts->day;
-        std::time_t t = timegm(&tm);
-        *value = std::chrono::system_clock::from_time_t(t);
+        *value = day_tp;
       } else{
-	std::tm tm = std::tm();
-	tm.tm_year = ts->year - 1900;
-	tm.tm_mon = ts->month - 1;
-	tm.tm_mday = ts->day;
-	tm.tm_hour = ts->hour;
-	tm.tm_min = ts->minute;
-	tm.tm_sec = ts->second;
-	std::time_t t = timegm(&tm);
-	*value = std::chrono::system_clock::from_time_t(t);
-	*value += std::chrono::milliseconds(ts->second_part);
+        auto time = std::chrono::hours(ts->hour) +
+                               std::chrono::minutes(ts->minute) +
+                               std::chrono::seconds(ts->second) +
+                               std::chrono::microseconds(ts->second_part);
+        *value = day_tp + std::chrono::duration_cast<std::chrono::system_clock::time_point::duration>(time);
       }
 
-      std::time_t t = std::chrono::system_clock::to_time_t(*value);
-      LOG_DEBUG(this << " result time " << column << " " << std::ctime(&t));
+
+#ifdef WT_DEBUG_ENABLED
+      if (WT_LOGGING("debug", WT_LOGGER)) {
+        using namespace cpp20::date;
+        std::ostringstream ss;
+        ss.imbue(std::locale::classic());
+        ss << *value;
+        WT_LOG("debug") << WT_LOGGER << ": " << this << " result time " << column << " " << ss.str();
+      }
+#endif
 
       return true;
     }
@@ -749,7 +734,7 @@ class MySQLStatement final : public SqlStatement
          return false;
 
        MYSQL_TIME* ts = static_cast<MYSQL_TIME*>(out_pars_[column].buffer);
-       auto msecs = date::floor<std::chrono::milliseconds>(
+       auto msecs = cpp20::date::floor<std::chrono::milliseconds>(
          std::chrono::microseconds(ts->second_part));
        auto absValue = std::chrono::hours(ts->hour) + std::chrono::minutes(ts->minute)
                      + std::chrono::seconds(ts->second) + msecs;

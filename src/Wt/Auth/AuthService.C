@@ -17,9 +17,14 @@
 
 #include "Wt/WDllDefs.h"
 
+#include <locale>
 #include <memory>
+#include <sstream>
 
 namespace Wt {
+
+LOGGER("Auth.AuthService");
+
   namespace Auth {
 
 /*! \defgroup auth Authentication module (Wt::Auth)
@@ -447,7 +452,12 @@ void AuthService::sendMail(const Mail::Message& message) const
 #endif
   }
 
-  m.write(std::cout);
+  WT_BAOSTREAM ss;
+#ifndef WT_TARGET_JAVA
+  ss.imbue(std::locale::classic());
+#endif
+  m.write(ss);
+  LOG_INFO("Sending Mail:\n" << ss.str());
 
   MailUtils::sendMail(m);
 }

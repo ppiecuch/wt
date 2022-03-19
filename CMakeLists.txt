@@ -13,8 +13,8 @@ SET(CMAKE_MODULE_PATH
 SET(CMAKE_PREFIX_PATH "~/Qt/5.15/clang_64")
 
 SET(VERSION_SERIES 4)
-SET(VERSION_MAJOR 6)
-SET(VERSION_MINOR 1)
+SET(VERSION_MAJOR 7)
+SET(VERSION_MINOR 0)
 
 #
 # Various things that must be configured by the user or packager ...
