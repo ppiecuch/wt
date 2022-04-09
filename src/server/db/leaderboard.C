@@ -1,0 +1,8 @@
+#include "leaderboard.h"
+
+#include <Wt/Dbo/Impl.h>
+
+DBO_INSTANTIATE_TEMPLATES(User);
+DBO_INSTANTIATE_TEMPLATES(Game);
+DBO_INSTANTIATE_TEMPLATES(Ranking);
+DBO_INSTANTIATE_TEMPLATES(Score);
