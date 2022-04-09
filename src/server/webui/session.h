@@ -6,20 +6,21 @@
 #include <Wt/Dbo/Session.h>
 #include <Wt/Dbo/ptr.h>
 
+#include <memory>
 #include <vector>
 
-#include "../db/user.h"
+#include "../db/leaderboard.h"
 
 using namespace Wt;
 
-typedef Auth::Dbo::UserDatabase<AuthInfo> UserDatabase;
+typedef Auth::Dbo::UserDatabase<AuthInfo> AuthUserDatabase;
 
 class Session : public Dbo::Session {
   Dbo::SqlConnectionPool *connectionPool_;
-  std::unique_ptr<UserDatabase> users_;
+  std::unique_ptr<AuthUserDatabase> users_;
   Auth::Login login_;
 
-  Dbo::ptr<User> user() const;
+  DboUser user() const;
 
 public:
   static void configureAuth();
@@ -38,8 +39,6 @@ public:
 
   static const Auth::AuthService &auth();
   static const Auth::AbstractPasswordService &passwordAuth();
-  static const std::vector<const Auth::OAuthService *> &oAuth();
-
   static std::unique_ptr<Dbo::SqlConnectionPool> createConnectionPool();
 
   Session(Dbo::SqlConnectionPool *connectionPool);

@@ -40,11 +40,16 @@ FILE(GLOB GAMESERVER_REST_SOURCE_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
   rest/*.C
   db/*.C
   sysmon/*.C
+  lua/*.c lua/*.C
+  lua/luacpp/*.cpp
+  lua/luacpp/Engine/*.cpp
+  lua/luacpp/Registry/*.cpp
   common/*.C
   resources/*.css
 )
 
 ADD_EXECUTABLE(gameserver ${GAMESERVER_REST_SOURCE_FILES})
+TARGET_INCLUDE_DIRECTORIES(gameserver PRIVATE lua)
 TARGET_LINK_LIBRARIES(gameserver
   wt wthttp wtdbosqlite3 ${WT_THREAD_LIB}
   ${Boost_LIBRARIES}

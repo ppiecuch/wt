@@ -21,6 +21,7 @@ Wt apps:
   10. https://github.com/rpauwels/ido
   11. https://github.com/NuLL3rr0r/samsungdforum.ir
   12. https://github.com/traw/blog-wt
+  13. https://github.com/rchakode/realopinsight/tree/30abf8cedc690c53e2dbe45785a04e259f1aa274/web/src
 
 Wt helpers:
   1. https://github.com/starius/wt-classes
@@ -37,3 +38,8 @@ Wt helpers:
   12. https://github.com/marco-m/wutils
   13. https://github.com/sanathkumarv/RestAPIWt
   14. https://github.com/danfai/dboc
+
+Security:
+  1. https://forum.unity.com/threads/is-it-possible-to-create-a-secure-leaderboard.1180798/
+  2. https://www.reddit.com/r/Unity3D/comments/2hzmc7/avoiding_leaderboard_corruption_cheating_do_we/
+  3. https://stackoverflow.com/questions/70203830/creating-an-anti-cheat-in-an-online-web-game

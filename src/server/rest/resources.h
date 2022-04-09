@@ -8,21 +8,46 @@ using namespace Wt;
 
 #include <string>
 
-class ApiService  : public WResource {
+/// Registering and authentication
+
+class ApiServiceRegistering  : public WResource {
 
   Dbo::SqlConnectionPool *connectionPool_;
-
-  void specialcase2003();
-  void yeararchive(const std::string &arg1);
-  void montharchive(const std::string &arg1, const std::string &arg2);
-  void articledetail(const std::string &arg1, const std::string &arg2, const std::string &arg3);
 
 protected:
   virtual void handleRequest(const Http::Request &request, Http::Response &response) override;
 
 public:
-  ApiService(Dbo::SqlConnectionPool *connectionPool);
-  virtual ~ApiService() { }
+  ApiServiceRegistering(Dbo::SqlConnectionPool *connectionPool);
+  virtual ~ApiServiceRegistering();
+};
+
+/// Scores management
+
+class ApiServiceScore  : public WResource {
+
+  Dbo::SqlConnectionPool *connectionPool_;
+
+protected:
+  virtual void handleRequest(const Http::Request &request, Http::Response &response) override;
+
+public:
+  ApiServiceScore(Dbo::SqlConnectionPool *connectionPool);
+  virtual ~ApiServiceScore();
+};
+
+/// Ranking access
+
+class ApiServiceRanking  : public WResource {
+
+  Dbo::SqlConnectionPool *connectionPool_;
+
+protected:
+  virtual void handleRequest(const Http::Request &request, Http::Response &response) override;
+
+public:
+  ApiServiceRanking(Dbo::SqlConnectionPool *connectionPool);
+  virtual ~ApiServiceRanking();
 };
 
 #endif // RESOURCES

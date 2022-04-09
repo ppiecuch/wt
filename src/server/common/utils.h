@@ -2,27 +2,35 @@
 #define COMMON_UTILS
 
 #include <Wt/Http/Response.h>
+#include <Wt/Json/Object.h>
 #include <Wt/WLogger.h>
 
 #include <time.h>
 #include <string>
 #include <unordered_map>
+#include <iostream>
 
 constexpr unsigned int MAX_CONTENT_LENGTH = 200;
-constexpr unsigned int INITIAL_BALANCE = 100000;
 
 enum err_code {
   content_length_exceeded = 0,
-  bad_request_upass,
-  user_already_exists,
-  unknown_error,
-  bad_request_stockcode,
+  device_already_exists,
   invalid_credentials,
-  bad_request_quantity,
-  bad_request_price,
-  insufficient_funds_balance,
-  insufficient_portfolio
+  bad_ranking_request,
+  bad_user_request,
+  unknown_request,
+  unknown_error,
 };
+
+template <class type_t>
+type_t readJSONValue(Wt::Json::Object result, const std::string &key, type_t defaultValue) {
+  try {
+    return result.get(key);
+  } catch (Wt::WException error) {
+      std::cerr << "Attribute '" << key << "' is invalid: " << error.what() << std::endl;
+      return defaultValue;
+  }
+}
 
 class Utility
 {
@@ -49,6 +57,5 @@ bool readFile(const std::string &file, std::string &out_data);
 std::string dateTimeString(const time_t rawTime, bool utc = true);
 std::string secondsToHumanReadableTime(const time_t seconds);
 std::string calculateSize(const std::size_t size);
-const char* getSQLiteDBName();
 
 #endif // COMMON_UTILS

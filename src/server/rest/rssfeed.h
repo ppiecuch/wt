@@ -15,10 +15,9 @@ protected:
   virtual void handleRequest(const Http::Request &request, Http::Response &response);
 
 public:
-  RSSFeed(
-    Dbo::SqlConnectionPool *connectionPool,
-    const std::string &title, const std::string &url, const std::string &description);
+  static void createRssEntry();
 
+  RSSFeed(Dbo::SqlConnectionPool *connectionPool, const std::string &title, const std::string &url, const std::string &description);
   virtual ~RSSFeed();
 };
 

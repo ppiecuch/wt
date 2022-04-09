@@ -20,12 +20,15 @@
 using namespace Wt;
 
 #include "application.h"
+#include "session.h"
 
 #include "../common/utils.h"
 #include "../common/controller.h"
 #include "../sysmon/sysmon.h"
 #include "../rest/resources.h"
 #include "../rest/rssfeed.h"
+#include "../db/leaderboard.h"
+#include "../db/rss.h"
 
 #include <tuple>
 #include <functional>
@@ -223,23 +226,68 @@ int app_landing(int argc, char **argv) {
     try {
       server.setServerConfiguration(argc, argv);
 
+      Session::configureAuth();
+
       std::unique_ptr<Dbo::SqlConnectionPool> db = Session::createConnectionPool();
 
-      ApiService api(db.get());
-      server.addResource(&api, "/api");
+      {
+        Dbo::Session session;
+        session.setConnectionPool(*db);
 
-      // GET /api/mysticmine/register/ppiecuch -> token
-      // GET /api/mysticmine/retrive/<email> -> token
+        session.mapClass<User>("user");
+        session.mapClass<AuthInfo>("auth_info");
+        session.mapClass<AuthInfo::AuthIdentityType>("auth_identity");
+        session.mapClass<AuthInfo::AuthTokenType>("auth_token");
+        session.mapClass<Game>("game");
+        session.mapClass<Ranking>("ranking");
+        session.mapClass<Score>("score");
+        session.mapClass<Rss>("rss");
 
-      // GET /api/mysticmine/normal/top/10
-      // UPDATE /api/mysticmine/normal/ppiecuch/<token>/1234
+        try {
+          session.createTables();
+          log("info") << "(Server) Database created";
+        } catch (Dbo::Exception& e) {
+          report_exception(e.what());
+          return 1;
+        } catch (...) {
+          log("info") << "(Server) Using existing database";
+        }
+      }
 
-      server.addResource(&api, "/api/${game}/${subindex}/${action}/${arg}");
+      ApiServiceRegistering registering(db.get());
+      ApiServiceScore score(db.get());
+      ApiServiceRanking ranking(db.get());
 
-      RSSFeed rss(db.get(), "Game Server journal", "", "Game Server latest events.");
-      server.addResource(&rss, "/rss");
-      server.addResource(&rss, "/rss/last/${num}");
-      server.addResource(&rss, "/rss/from/${timestamp}");
+      // GET /api/register/mysticmine/ios-xperia-1AC9D -> token (optional body: email address, display name)
+      //  result:
+      //   already registered
+      // GET /api/mysticmine/deregister -> remove token if exists
+      //  result:
+      //    token not exists
+      //    token removed
+      // GET /api/mysticmine/retrive/<email> -> token send to registered email
+
+      // GET /api/ranking/mysticmine/normal/global/10
+      // UPDATE /api/ranking/mysticmine/normal/ppiecuch/1234
+
+      //  Header:
+      //    Authentication: <token>
+
+      server.addResource(&registering, "/api/register/${game}/${pin}");
+      server.addResource(&score, "/api/score/${game}/${ranking}/${score}");
+      // get $top items from $chart
+      server.addResource(&ranking, "/api/ranking/${game}/${ranking}/${chart}/${top}");
+
+      RSSFeed rss(db.get(), "KomSoft GameServer journal", "https://service-gate.in.net", "Latest events.");
+      // GET "/rss/mysticmine"
+      //  all entries for selected topic
+      // GET "/rss/all/last/20"
+      //  last 20 entries for given topic
+      // GET "/rss/mysticmine/from/1234565"
+      //  entries from given timestamp
+
+      server.addResource(&rss, "/feed/${action}/${arg}");
+      server.addResource(&rss, "/feed/${topic}/${action}/${arg}");
 
       server.addEntryPoint(EntryPointType::Application,
                            std::bind(&createApplication, std::placeholders::_1, db.get()));

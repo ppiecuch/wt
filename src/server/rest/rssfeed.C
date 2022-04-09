@@ -1,29 +1,24 @@
 #include <Wt/Http/Response.h>
+#include <Wt/Dbo/Session.h>
 #include <Wt/Utils.h>
 
 using namespace Wt;
 
 #include "../db/rss.h"
-#include "../webui/session.h"
 
 #include "rssfeed.h"
 
-
-RSSFeed::RSSFeed(
-  Dbo::SqlConnectionPool *connectionPool,
-  const std::string &title, const std::string &url, const std::string &description)
-  : connectionPool_(connectionPool)
-  , title_(title)
-  , url_(url)
-  , description_(description)
-{ }
-
-RSSFeed::~RSSFeed() {
-  beingDeleted();
+static WDateTime _fromTime(time_t tm) {
+  WDateTime t;
+  t.setTime_t(tm);
+  return t;
 }
 
 void RSSFeed::handleRequest(const Http::Request &request, Http::Response &response) {
-  Session session(connectionPool_);
+  Dbo::Session session;
+  session.setConnectionPool(*connectionPool_);
+
+  session.mapClass<Rss>("rss");
 
   response.setMimeType("application/rss+xml");
 
@@ -49,9 +44,38 @@ void RSSFeed::handleRequest(const Http::Request &request, Http::Response &respon
 
   Dbo::Transaction t(session);
 
-  Journal events = session.find<Rss>
-    ("order by date desc "
-     "limit ?").bind(10);
+  auto const &topic = request.urlParam("topic"); // topic or all
+  auto const &action = request.urlParam("action"); // last or from
+  auto const &arg = request.urlParam("arg"); // timestamp or number of records
+
+  const long limit = std::stol(arg);
+
+  std::cout <<
+    "Request URL parameters\n"
+    "----------------------\n";
+
+  auto params = request.urlParams();
+
+  if (params.empty())
+    std::cout << "(empty)\n";
+  else
+    for (const auto &param : params) {
+      const auto &name = param.first;
+      const auto &value = param.second;
+      std::cout << name << ": " << value << "\n";
+    }
+
+  Journal events;
+  if (action == "last" && !topic.empty())
+    events = session.find<Rss>().where("topic = ?").bind(topic).orderBy("date desc").limit(limit);
+  else if (action == "last" && topic.empty())
+    events = session.find<Rss>().orderBy("date desc").limit(limit);
+  else if (action == "from" && !topic.empty())
+    events = session.find<Rss>().where("topic = ? and date >= ?").bind(topic).bind(_fromTime(limit)).orderBy("date desc");
+  else if (action == "from" && topic.empty())
+    events = session.find<Rss>().where("date >= ?").bind(_fromTime(limit)).orderBy("date desc");
+  else
+    events = session.find<Rss>().orderBy("date desc").limit(20);
 
   for (auto i = events.begin(); i != events.end(); ++i) {
     Dbo::ptr<Rss> rss = *i;
@@ -78,4 +102,15 @@ void RSSFeed::handleRequest(const Http::Request &request, Http::Response &respon
     "</rss>\n";
 
   t.commit();
+}
+
+RSSFeed::RSSFeed(Dbo::SqlConnectionPool *connectionPool, const std::string &title, const std::string &url, const std::string &description)
+: connectionPool_(connectionPool)
+, title_(title)
+, url_(url)
+, description_(description) {
+}
+
+RSSFeed::~RSSFeed() {
+  beingDeleted();
 }
