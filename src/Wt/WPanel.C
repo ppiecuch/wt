@@ -38,7 +38,7 @@ WPanel::WPanel()
 
   impl_->bindEmpty("titlebar");
   impl_->bindWidget("contents", std::move(centralArea));
-  
+
 
   setJavaScriptMember
     (WT_RESIZE_JS,
@@ -61,19 +61,18 @@ WPanel::WPanel()
      ""  "c.lh = true;"
      ""  "c.style.height = h + 'px';"
      // the panel is indirectly hidden: will this back-fire ?
-     ""  "$(c).children().each(function() { "
-     ""      "var self = $(this), "
-     ""          "padding = self.outerHeight() - self.height();"
-     ""      "self.height(h - padding);"
-     ""      "this.lh = true;"
+     ""  "c.querySelectorAll(':scope > *').forEach(function(self) { "
+     ""      "let padding = self.getBoundingClientRect().height - " WT_CLASS ".px(self, 'height');"
+     ""      "self.style.height = (h - padding) + 'px';"
+     ""      "self.lh = true;"
      ""  "});"
      """} else {"
      ""  "c.style.height = '';"
      ""  "c.lh = false;"
-     ""  "$(c).children().each(function() { "
-     ""    "this.style.height = '';"
-     ""    "this.lh = false;"
-     ""  "});"
+     ""  "for (const child of c.children) {"
+     ""      "child.style.height = '';"
+     ""      "child.lh = false;"
+     ""  "}"
      """}"
      "};");
 
@@ -149,9 +148,9 @@ void WPanel::setCollapsible(bool on)
       setTitleBar(true);
       std::unique_ptr<WIconPair> icon
         (collapseIcon_ = new WIconPair(resources + "collapse.gif",
-				       resources + "expand.gif"));
+                                       resources + "expand.gif"));
       collapseIcon_->setFloatSide(Side::Left);
-      
+
       titleBarWidget()->insertWidget(0, std::move(icon));
 
       collapseIcon_->icon1Clicked().connect(this, &WPanel::doCollapse);
@@ -163,7 +162,7 @@ void WPanel::setCollapsible(bool on)
       collapseIcon_->setState(isCollapsed() ? 1 : 0);
 
       titleBarWidget()->clicked().connect(this, &WPanel::toggleCollapse);
-      
+
       app->theme()->apply(this, collapseIcon_, PanelCollapseButton);
     } else if (!on && collapseIcon_) {
       isCollapsible_ = on;
@@ -215,7 +214,10 @@ bool WPanel::isCollapsed() const
 
 void WPanel::collapse()
 {
-  if (isCollapsible()) {
+  // With Bootstrap 5 a WPanel can be collapsed
+  // by user interaction, but there is no collapse
+  // icon, and collapse() has no effect
+  if (isCollapsible() && collapseIcon_) {
     collapseIcon_->showIcon2();
 
     doCollapse();
@@ -224,7 +226,10 @@ void WPanel::collapse()
 
 void WPanel::expand()
 {
-  if (isCollapsible()) {
+  // With Bootstrap 5 a WPanel can be collapsed
+  // by user interaction, but there is no collapse
+  // icon, and expand() has no effect
+  if (isCollapsible() && collapseIcon_) {
     collapseIcon_->showIcon1();
 
     doExpand();

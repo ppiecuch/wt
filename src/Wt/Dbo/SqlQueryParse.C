@@ -12,7 +12,11 @@
 
 #include <boost/version.hpp>
 
-#if !defined(WT_NO_SPIRIT) && defined(WT_CXX14) && BOOST_VERSION >= 106900 && (!defined(_MSC_VER) || _MSC_VER >= 1910)
+#if !defined(WT_NO_SPIRIT) && \
+    ((BOOST_VERSION >= 108100 && defined(WT_CXX17)) || \
+     (BOOST_VERSION >= 106900 && BOOST_VERSION < 108100)) && \
+    (!defined(_MSC_VER) || _MSC_VER >= 1910)
+#  define BOOST_SPIRIT_X3_HIDE_CXX17_WARNING
 #  define X3_QUERY_PARSE
 #elif !defined(WT_NO_SPIRIT) && BOOST_VERSION >= 104100
 #  define SPIRIT_QUERY_PARSE
@@ -74,7 +78,7 @@ void parseSql(const std::string& sql, SelectFieldLists& fieldLists)
   std::size_t selectPos = ifind(sql, "select ");
   if (selectPos != 0)
     throw Exception("Session::query(): query should start with 'select '"
-		    " (sql='" + sql + "')");
+                    " (sql='" + sql + "')");
 
   i += 7;
 
@@ -156,21 +160,21 @@ struct sql_query_grammar : qi::grammar<Iterator, ascii::space_type>
     using phoenix::val;
     using phoenix::throw_;
 
-    query_expression 
+    query_expression
       = select_expression % compound_operator
       ;
 
-    select_expression 
+    select_expression
       = with_clause
         >> no_case["select"][
-			     boost::bind(&Self::handleSelect, this)
-			     ]
-	>> -( (no_case["distinct"] >>
-	      -(no_case["on"] >> '(' >> (raw[field] % ',') >>  ')'))
-	      | no_case["all"]
-	      )
-	>> fields
-	>> -( no_case["from"] > from_clause )
+                             boost::bind(&Self::handleSelect, this)
+                             ]
+        >> -( (no_case["distinct"] >>
+              -(no_case["on"] >> '(' >> (raw[field] % ',') >>  ')'))
+              | no_case["all"]
+              )
+        >> fields
+        >> -( no_case["from"] > from_clause )
       ;
 
     compound_operator
@@ -189,8 +193,8 @@ struct sql_query_grammar : qi::grammar<Iterator, ascii::space_type>
 
     fields
       = raw[field][
-		   boost::bind(&Self::handleField, this, boost::arg<1>())
-		   ] 
+                   boost::bind(&Self::handleField, this, boost::arg<1>())
+                   ]
         % ','
       ;
 
@@ -220,11 +224,11 @@ struct sql_query_grammar : qi::grammar<Iterator, ascii::space_type>
     on_error<fail>
       (query_expression,
        throw_(construct<std::logic_error>
-	      (val("Error parsing SQL query: Expected ")
-	       + boost::spirit::_4
-	       + val(" here: \"")
-	       + construct<std::string>(boost::spirit::_3, boost::spirit::_2)
-	       + val("\""))));
+              (val("Error parsing SQL query: Expected ")
+               + boost::spirit::_4
+               + val(" here: \"")
+               + construct<std::string>(boost::spirit::_3, boost::spirit::_2)
+               + val("\""))));
     */
     on_error<fail>
       (query_expression,
@@ -262,7 +266,7 @@ struct sql_query_grammar : qi::grammar<Iterator, ascii::space_type>
   {
     fieldLists_.push_back(SelectFieldList());
   }
-  
+
   void handleField(const boost::iterator_range<std::string::const_iterator>& s)
   {
     SelectField field;
@@ -285,7 +289,7 @@ void parseSql(const std::string& sql, SelectFieldLists& fieldLists)
   if (success) {
     if (iter != end)
       throw Exception("Error parsing SQL query: Expected end here: \""
-		      + std::string(iter, end) + "\"");
+                      + std::string(iter, end) + "\"");
   } else
     throw Exception("Error parsing SQL query: \"" + sql + "\"");
 }

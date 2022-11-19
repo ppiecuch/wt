@@ -21,7 +21,7 @@ namespace Wt {
 
       struct SelectField
       {
-	std::size_t begin, end;
+        std::size_t begin, end;
       };
 
       typedef std::vector<SelectField> SelectFieldList;
@@ -30,28 +30,35 @@ namespace Wt {
       template <class Result>
       class QueryBase {
       protected:
-	std::vector<FieldInfo> fields() const;
-	void fieldsForSelect(const SelectFieldList& list,
-			     std::vector<FieldInfo>& result) const;
+        std::vector<FieldInfo> fields() const;
+        void fieldsForSelect(const SelectFieldList& list,
+                             std::vector<FieldInfo>& result) const;
         std::pair<SqlStatement *, SqlStatement *>
         statements(const std::string& join, const std::string &where,
-		   const std::string &groupBy,
+                   const std::string &groupBy,
                    const std::string &having, const std::string &orderBy,
                    int limit, int offset) const;
         Session &session() const;
 
         QueryBase();
-	QueryBase(Session& session, const std::string& sql);
-	QueryBase(Session& session, const std::string& table,
-		  const std::string& where);
+        QueryBase(Session& session, const std::string& sql);
+        QueryBase(Session& session, const std::string& table,
+                  const std::string& where);
 
-	QueryBase& operator=(const QueryBase& other);
+        QueryBase& operator=(const QueryBase& other);
 
-	Result singleResult(const collection<Result>& results) const;
+        Result singleResult(const collection<Result>& results) const;
 
-	Session *session_;
-	std::string sql_;
-	SelectFieldLists selectFieldLists_;
+        Session *session_;
+        std::string sql_;
+        SelectFieldLists selectFieldLists_;
+
+        std::string createQuerySelectSql(const std::string& join,
+                                         const std::string& where,
+                                         const std::string& groupBy,
+                                         const std::string& having,
+                                         const std::string& orderBy,
+                                         int limit, int offset) const;
       };
     }
 
@@ -100,7 +107,7 @@ public:
    * This is a convenience method for creating a SQL query, and
    * concatenates a new <i>join</i> to the current query.
    *
-   * The join should be a valid SQL join expression, e.g. 
+   * The join should be a valid SQL join expression, e.g.
    * "customer c on o.customer_id = c.id"
    *
    * \note This method is not available when using a DirectBinding binding
@@ -113,7 +120,7 @@ public:
    * This is a convenience method for creating a SQL query, and
    * concatenates a new <i>left join</i> to the current query.
    *
-   * The join should be a valid SQL join expression, e.g. 
+   * The join should be a valid SQL join expression, e.g.
    * "customer c on o.customer_id = c.id"
    *
    * \note This method is not available when using a DirectBinding binding
@@ -126,14 +133,14 @@ public:
    * This is a convenience method for creating a SQL query, and
    * concatenates a new <i>right join</i> to the current query.
    *
-   * The join should be a valid SQL join expression, e.g. 
+   * The join should be a valid SQL join expression, e.g.
    * "customer c on o.customer_id = c.id"
    *
    * \note This method is not available when using a DirectBinding binding
    *       strategy.
    */
   AbstractQuery& rightJoin(const std::string& other);
-  
+
   /*! \brief Adds a query condition.
    *
    * This is a convenience method for creating a SQL query, and
@@ -211,18 +218,18 @@ public:
    *   select department.name, count(employees) from department
    *    where count(employees) > 5
    *    group by count(employees);
-   *          
+   *
    * Because you can't have aggregate fields in a where clause, but you can go:
    *
    *   select department.name, count(employees) from department
    *    group by count(employees)
    *   having count(employees) > 5;
-   *          
+   *
    * This will of course return all the departments with more than 5 employees
    * (and their employee count).
    *
    * \note You must have a group by clause, in order to have a 'having' clause
-   */  
+   */
   AbstractQuery& having(const std::string& fields);
 
   /*! \brief Sets a result offset.
@@ -258,7 +265,7 @@ public:
   /*! \brief Returns a limit set for this query.
    *
    * \sa limit(int)
-   */  
+   */
   int limit() const;
 
 protected:
@@ -270,10 +277,12 @@ protected:
   AbstractQuery(const AbstractQuery& other);
   AbstractQuery& operator= (const AbstractQuery& other);
   void bindParameters(Session *session, SqlStatement *statement) const;
+  AbstractQuery& bindSubqueryValues(const AbstractQuery& other);
+
 
   std::vector<Impl::ParameterBase *> parameters_;
 };
-  
+
 /*! \class Query Wt/Dbo/Query.h Wt/Dbo/Query.h
  *  \brief A database query.
  *
@@ -315,7 +324,7 @@ protected:
  * multiple times, perhaps with different parameter values or to scroll
  * through the query results. The where(), orWhere(), groupBy(), having(), and
  * orderBy() are merely convenience methods which you may use to
- * compose the querys incrementally, but you may just as well 
+ * compose the querys incrementally, but you may just as well
  * specify the entire SQL as a single string.
  *
  * When using DirectBinding, parameters are directly bound to an
@@ -409,6 +418,43 @@ public:
    */
   operator collection< Result > () const;
 
+  /*! \brief Returns the SQL of the query as a string.
+   *
+   * The returned string can be used as a subquery in another query. The
+   * bound values can be copied to the other query using Query::bindSubqueryValues().
+   *
+   * \note This method is not available when using a DirectBinding binding
+   *       strategy.
+   */
+  std::string asString() const;
+
+  /*! \brief Copies all bound values of the argument to this query.
+   *
+   * This method should be used together with asString(). When
+   * a subquery is added, all of its bound values must be copied to
+   * this query.
+   *
+   * This can be used as follows (query all paintings more expensive than any Vermeer):
+   * \code
+   * auto maxPriceQuery = session.query<int>("select MAX(p.price) from \"painting\" as p")
+   *   .where("p.artist = ?").bind("Vermeer");
+   * auto q = session.query<dbo::ptr<Painting>>("select p from \"painting\" as p")
+   *   .where("p.price > (" + maxPriceQuery.asString() + ")").bindSubqueryValues(maxPriceQuery);
+   * \endcode
+   * which is equivalent to this code:
+   * \code
+   * auto q = session.query<dbo::ptr<Painting>>(
+   *   "select p from \"painting\" as p "
+   *   "where p.price > (select MAX(p.price) from \"painting\" as p "
+   *   "                 where p.artist = ?)")
+   *   .bind("Vermeer");
+   * \endcode
+   *
+   * \note This method is not available when using a DirectBinding binding
+   *       strategy.
+   */
+  Query<Result, BindStrategy>& bindSubqueryValues(const AbstractQuery& other);
+
   /** @name Methods for composing a query (DynamicBinding only)
    */
   //!@{
@@ -417,7 +463,7 @@ public:
    * This is a convenience method for creating a SQL query, and
    * concatenates a new <i>join</i> to the current query.
    *
-   * The join should be a valid SQL join expression, e.g. 
+   * The join should be a valid SQL join expression, e.g.
    * "customer c on o.customer_id = c.id"
    *
    * \note This method is not available when using a DirectBinding binding
@@ -425,12 +471,38 @@ public:
    */
   Query<Result, BindStrategy>& join(const std::string& other);
 
+  /*! \brief Adds a join.
+   *
+   * This is a convenience method for creating a SQL query, and
+   * concatenates a new <i>join</i> to the current query.
+   * The method uses the name supplied to Session::mapClass() as the
+   * table name for the template argument and the first method
+   * argument as an alias. The second argument is the condition
+   * following the "on" keyword.
+   *
+   * Usage example:
+   * \code
+   * // ...
+   * session->mapClass<A>("table_a");
+   * session->mapClass<B>("table_b");
+   * // ...
+   * using ResultType = std::tuple< Wt::Dbo::ptr<A>, Wt::Dbo::ptr<B> >;
+   * auto results = session.query<ResultType>("select a, b from \"table_a\" a")
+   *                  .join<B>("b", "a.b_id = b.id");
+   * \endcode
+   *
+   * \note This method is not available when using a DirectBinding binding
+   *       strategy.
+   */
+  template <typename C>
+  Query<Result, BindStrategy>& join(const std::string& alias, const std::string& condition);
+
   /*! \brief Adds a left join.
    *
    * This is a convenience method for creating a SQL query, and
    * concatenates a new <i>left join</i> to the current query.
    *
-   * The join should be a valid SQL join expression, e.g. 
+   * The join should be a valid SQL join expression, e.g.
    * "customer c on o.customer_id = c.id"
    *
    * \note This method is not available when using a DirectBinding binding
@@ -438,19 +510,71 @@ public:
    */
   Query<Result, BindStrategy>& leftJoin(const std::string& other);
 
+  /*! \brief Adds a left join.
+   *
+   * This is a convenience method for creating a SQL query, and
+   * concatenates a new <i>left join</i> to the current query.
+   * The method uses the name supplied to Session::mapClass() as the
+   * table name for the template argument and the first method
+   * argument as an alias. The second argument is the condition
+   * following the "on" keyword.
+   *
+   * Usage example:
+   * \code
+   * // ...
+   * session->mapClass<A>("table_a");
+   * session->mapClass<B>("table_b");
+   * // ...
+   * using ResultType = std::tuple< Wt::Dbo::ptr<A>, Wt::Dbo::ptr<B> >;
+   * auto results = session.query<ResultType>("select a, b from \"table_a\" a")
+   *                  .leftJoin<B>("b", "a.b_id = b.id");
+   * \endcode
+   *
+   * \note This method is not available when using a DirectBinding binding
+   *       strategy.
+   */
+  template <typename C>
+  Query<Result, BindStrategy>& leftJoin(const std::string& alias, const std::string& condition);
+
   /*! \brief Adds a right join.
    *
    * This is a convenience method for creating a SQL query, and
    * concatenates a new <i>right join</i> to the current query.
    *
-   * The join should be a valid SQL join expression, e.g. 
+   * The join should be a valid SQL join expression, e.g.
    * "customer c on o.customer_id = c.id"
    *
    * \note This method is not available when using a DirectBinding binding
    *       strategy.
    */
   Query<Result, BindStrategy>& rightJoin(const std::string& other);
-  
+
+  /*! \brief Adds a right join.
+   *
+   * This is a convenience method for creating a SQL query, and
+   * concatenates a new <i>right join</i> to the current query.
+   * The method uses the name supplied to Session::mapClass() as the
+   * table name for the template argument and the first method
+   * argument as an alias. The second argument is the condition
+   * following the "on" keyword.
+   *
+   * Usage example:
+   * \code
+   * // ...
+   * session->mapClass<A>("table_a");
+   * session->mapClass<B>("table_b");
+   * // ...
+   * using ResultType = std::tuple< Wt::Dbo::ptr<A>, Wt::Dbo::ptr<B> >;
+   * auto results = session.query<ResultType>("select a, b from \"table_a\" a")
+   *                  .rightJoin<B>("b", "a.b_id = b.id");
+   * \endcode
+   *
+   * \note This method is not available when using a DirectBinding binding
+   *       strategy.
+   */
+  template <typename C>
+  Query<Result, BindStrategy>& rightJoin(const std::string& alias, const std::string& condition);
+
   /*! \brief Adds a query condition.
    *
    * This is a convenience method for creating a SQL query, and
@@ -540,13 +664,13 @@ public:
    *   select department.name, count(employees) from department
    *    where count(employees) > 5
    *    group by count(employees);
-   *          
+   *
    * Because you can't have aggregate fields in a where clause, but you can go:
    *
    *   select department.name, count(employees) from department
    *    group by count(employees)
    *   having count(employees) > 5;
-   *          
+   *
    * This will of course return all the departments with more than 5 employees
    * (and their employee count).
    *
@@ -646,8 +770,11 @@ public:
   Query& operator= (const Query& other);
   template<typename T> Query<Result, DynamicBinding>& bind(const T& value);
   Query<Result, DynamicBinding>& join(const std::string& other);
+  template<typename C> Query<Result, DynamicBinding>& join(const std::string& alias, const std::string& condition);
   Query<Result, DynamicBinding>& leftJoin(const std::string& other);
+  template <typename C> Query<Result, DynamicBinding>& leftJoin(const std::string& alias, const std::string& condition);
   Query<Result, DynamicBinding>& rightJoin(const std::string& other);
+  template <typename C> Query<Result, DynamicBinding>& rightJoin(const std::string& alias, const std::string& condition);
   Query<Result, DynamicBinding>& where(const std::string& condition);
   Query<Result, DynamicBinding>& orWhere(const std::string& condition);
   Query<Result, DynamicBinding>& orderBy(const std::string& fieldName);
@@ -659,6 +786,9 @@ public:
   collection< Result > resultList() const;
   operator Result () const;
   operator collection< Result > () const;
+
+  std::string asString() const;
+  Query<Result, DynamicBinding>& bindSubqueryValues(const AbstractQuery& other);
 
 private:
   Query(Session& session, const std::string& sql);

@@ -20,7 +20,8 @@ class Session : public Dbo::Session {
   std::unique_ptr<AuthUserDatabase> users_;
   Auth::Login login_;
 
-  DboUser user() const;
+  DboPlayer player() const;
+  DboDevice device() const;
 
 public:
   static void configureAuth();
@@ -30,19 +31,25 @@ public:
   Auth::AbstractUserDatabase &users();
   Auth::Login &login() { return login_; }
 
-  std::vector<User> topUsers(int limit);
+  std::vector<Player> topPlayers(int limit);
 
   // These methods deal with the currently logged in user
-  std::string userName() const;
+  std::string playerName() const;
   int findRanking();
   void addToScore(int s);
 
   static const Auth::AuthService &auth();
   static const Auth::AbstractPasswordService &passwordAuth();
-  static std::unique_ptr<Dbo::SqlConnectionPool> createConnectionPool();
+  static std::unique_ptr<Dbo::SqlConnectionPool> createConnectionPool(std::string &connection_string);
+  static std::string getDatabaseFilename(const std::string &connection_string) {
+      if (strncmp(connection_string.c_str(), "sq://", 5) == 0) {
+        return connection_string.substr(5);
+      }
+      return "";
+  }
 
   Session(Dbo::SqlConnectionPool *connectionPool);
   ~Session();
 };
 
-#endif //WEBUI_SESSION
+#endif // WEBUI_SESSION

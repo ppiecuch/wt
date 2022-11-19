@@ -11,17 +11,20 @@ INCLUDE_DIRECTORIES(
 
 LINK_DIRECTORIES(${BOOST_LIB_DIRS})
 
-MACRO (FILE_TO_STRING infile outfile var)
-ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${outfile}
-               COMMAND ${CMAKE_COMMAND}
-                   ARGS -Dinfile:FILEPATH=${CMAKE_CURRENT_SOURCE_DIR}/${infile}
-                        -Doutfile:FILEPATH=${CMAKE_CURRENT_BINARY_DIR}/${outfile}
-                        -Dvar:STRING=${var}
-                        -P ${CMAKE_CURRENT_SOURCE_DIR}/filetostring.cmake
-           MAIN_DEPENDENCY
-                ${CMAKE_CURRENT_SOURCE_DIR}/${infile}
-)
-ENDMACRO (FILE_TO_STRING)
+function(file_to_string infile outfile var)
+  add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${outfile}
+    COMMAND ${CMAKE_COMMAND}
+      ARGS -Dinfile:FILEPATH=${CMAKE_CURRENT_SOURCE_DIR}/${infile}
+           -Doutfile:FILEPATH=${CMAKE_CURRENT_BINARY_DIR}/${outfile}
+           -Dvar:STRING=${var}
+           -P ${CMAKE_CURRENT_SOURCE_DIR}/filetostring.cmake
+    MAIN_DEPENDENCY
+      ${CMAKE_CURRENT_SOURCE_DIR}/${infile}
+    DEPENDS
+      ${CMAKE_CURRENT_SOURCE_DIR}/filetostring.cmake
+  )
+endfunction()
 
 FILE_TO_STRING(web/skeleton/Plain.html    Plain_html.C      Plain_html)
 FILE_TO_STRING(web/skeleton/Hybrid.html   Hybrid_html.C     Hybrid_html)
@@ -44,8 +47,6 @@ IF(CMAKE_BUILD_TYPE STREQUAL "Debug")
 ELSE(CMAKE_BUILD_TYPE STREQUAL "Debug")
   FILE_TO_STRING(js/WCartesianChart.min.js WCartesianChart_js.C WCartesianChart_js)
 ENDIF(CMAKE_BUILD_TYPE STREQUAL "Debug")
-
-FILE_TO_STRING(web/skeleton/jquery.min.js JQuery_js.C JQuery_js)
 
 FILE_TO_STRING(xml/wt.xml Wt_xml.C Wt_xml)
 FILE_TO_STRING(xml/auth_strings.xml AuthStrings_xml.C AuthStrings_xml)
@@ -403,7 +404,6 @@ BootstrapTheme_xml.C
 Bootstrap3Theme_xml.C
 Bootstrap5Theme_xml.C
 AuthCssTheme_xml.C
-JQuery_js.C
 )
 
 IF (WT_CPP20_DATE_TZ_IMPLEMENTATION STREQUAL "date")
@@ -466,8 +466,6 @@ ENDIF(HAVE_HARU)
 
 IF("${WT_WRASTERIMAGE_IMPLEMENTATION}" STREQUAL "GraphicsMagick")
   SET(libsources ${libsources} Wt/WRasterImage.h Wt/WRasterImage-gm.C)
-ELSEIF("${WT_WRASTERIMAGE_IMPLEMENTATION}" STREQUAL "skia")
-  SET(libsources ${libsources} Wt/WRasterImage.h Wt/WRasterImage-skia.C)
 ELSEIF("${WT_WRASTERIMAGE_IMPLEMENTATION}" STREQUAL "Direct2D")
   SET(libsources ${libsources} Wt/WRasterImage.h Wt/WRasterImage-d2d1.C)
 ENDIF("${WT_WRASTERIMAGE_IMPLEMENTATION}" STREQUAL "GraphicsMagick")
@@ -532,15 +530,11 @@ ENDIF(WIN32)
 
 ADD_LIBRARY(wt ${libsources})
 
-IF(SHARED_LIBS)
+if(NOT APPLE OR SHARED_LIBS)
   SET_PROPERTY(TARGET wt PROPERTY C_VISIBILITY_PRESET hidden)
   SET_PROPERTY(TARGET wt PROPERTY CXX_VISIBILITY_PRESET hidden)
   SET_PROPERTY(TARGET wt PROPERTY VISIBILITY_INLINES_HIDDEN YES)
-else()
-  SET_PROPERTY(TARGET wt PROPERTY C_VISIBILITY_PRESET default)
-  SET_PROPERTY(TARGET wt PROPERTY CXX_VISIBILITY_PRESET default)
-  SET_PROPERTY(TARGET wt PROPERTY VISIBILITY_INLINES_HIDDEN NO)
-endif(SHARED_LIBS)
+endif()
 
 if (WT_ASIO_IS_STANDALONE_ASIO)
   TARGET_LINK_LIBRARIES(wt
@@ -549,6 +543,10 @@ else (WT_ASIO_IS_STANDALONE_ASIO)
   TARGET_LINK_LIBRARIES(wt
     PUBLIC ${BOOST_WT_LIBRARIES})
 endif (WT_ASIO_IS_STANDALONE_ASIO)
+
+if(DEBUG_JS)
+  target_compile_definitions(wt PRIVATE "WT_DEBUG_JS=${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
 
 TARGET_LINK_LIBRARIES(wt
   PUBLIC
@@ -568,9 +566,11 @@ IF(ENABLE_LIBWTTEST)
     Wt/Test/WTestEnvironment.C
   )
 
-  SET_PROPERTY(TARGET wttest PROPERTY C_VISIBILITY_PRESET hidden)
-  SET_PROPERTY(TARGET wttest PROPERTY CXX_VISIBILITY_PRESET hidden)
-  SET_PROPERTY(TARGET wttest PROPERTY VISIBILITY_INLINES_HIDDEN YES)
+  if(NOT APPLE OR SHARED_LIBS)
+    SET_PROPERTY(TARGET wttest PROPERTY C_VISIBILITY_PRESET hidden)
+    SET_PROPERTY(TARGET wttest PROPERTY CXX_VISIBILITY_PRESET hidden)
+    SET_PROPERTY(TARGET wttest PROPERTY VISIBILITY_INLINES_HIDDEN YES)
+  endif()
 
   TARGET_LINK_LIBRARIES(wttest PUBLIC wt)
 
@@ -588,9 +588,9 @@ IF(ENABLE_LIBWTTEST)
 
   INSTALL(TARGETS wttest
           EXPORT wt-target-test
-	  RUNTIME DESTINATION bin
-	  LIBRARY DESTINATION ${LIB_INSTALL_DIR}
-	  ARCHIVE DESTINATION ${LIB_INSTALL_DIR})
+          RUNTIME DESTINATION bin
+          LIBRARY DESTINATION ${LIB_INSTALL_DIR}
+          ARCHIVE DESTINATION ${LIB_INSTALL_DIR})
 
   INSTALL(EXPORT wt-target-test
           DESTINATION ${CMAKE_INSTALL_DIR}/wt
@@ -598,7 +598,7 @@ IF(ENABLE_LIBWTTEST)
 
   IF(MSVC)
     SET_TARGET_PROPERTIES(wttest PROPERTIES COMPILE_FLAGS "${BUILD_PARALLEL} /wd4251 /wd4275 /wd4355 /wd4800 /wd4996 /wd4101 /wd4267")
-	SET_TARGET_PROPERTIES(wttest PROPERTIES FOLDER "test")
+    SET_TARGET_PROPERTIES(wttest PROPERTIES FOLDER "test")
   ENDIF(MSVC)
 
   SET_TARGET_PROPERTIES(
@@ -639,14 +639,10 @@ IF("${WT_WRASTERIMAGE_IMPLEMENTATION}" STREQUAL "GraphicsMagick")
   TARGET_LINK_LIBRARIES(wt PRIVATE ${GM_LIBRARIES})
   INCLUDE_DIRECTORIES(${GM_INCLUDE_DIRS})
   ADD_DEFINITIONS(-DHAVE_GRAPHICSMAGICK)
-ELSEIF("${WT_WRASTERIMAGE_IMPLEMENTATION}" STREQUAL "skia")
-  TARGET_LINK_LIBRARIES(wt PRIVATE ${SKIA_LIBRARIES})
-  INCLUDE_DIRECTORIES(${SKIA_INCLUDE_DIRS})
-  ADD_DEFINITIONS(${SKIA_DEFINES})
 ELSEIF("${WT_WRASTERIMAGE_IMPLEMENTATION}" STREQUAL "Direct2D")
   TARGET_LINK_LIBRARIES(wt PRIVATE d2d1 dwrite windowscodecs shlwapi)
 ELSE("${WT_WRASTERIMAGE_IMPLEMENTATION}" STREQUAL "GraphicsMagick")
-  MESSAGE("** Disabling raster image support (WRasterImage): set WT_WRASTERIMAGE_IMPLEMENTATION to GraphicsMagick or skia.")
+  MESSAGE("** Disabling raster image support (WRasterImage): set WT_WRASTERIMAGE_IMPLEMENTATION to GraphicsMagick or Direct2D.")
 ENDIF("${WT_WRASTERIMAGE_IMPLEMENTATION}" STREQUAL "GraphicsMagick")
 
 IF(HAVE_GL)
@@ -656,7 +652,7 @@ IF(HAVE_GL)
   ENDIF(USE_SYSTEM_GLEW)
   TARGET_LINK_LIBRARIES(wt PRIVATE ${GL_LIBRARIES})
 ELSE(HAVE_GL)
-  MESSAGE("** Disabling server-side opengl rendering for WGLWidget: requires gl, glew and WRasterImage (GraphicsMagick or skia).")
+  MESSAGE("** Disabling server-side opengl rendering for WGLWidget: requires gl, glew and WRasterImage (GraphicsMagick or Direct2D).")
 ENDIF(HAVE_GL)
 
 IF(WT_FONTSUPPORT_SIMPLE)

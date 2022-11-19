@@ -6,49 +6,34 @@
 
 /* Note: this is at the same time valid JavaScript and C++. */
 
-WT_DECLARE_WT_MEMBER
-(1, JavaScriptFunction, "PopupWindow",
- function(WT, url, width, height, onclose) {
-   function getScreenPos() {
-     var width = 0;
-     var height = 0;
+WT_DECLARE_WT_MEMBER(1, JavaScriptFunction, "PopupWindow", function(WT, url, width, height, onclose) {
+  function computePopupPos(width, height) {
+    const parentSize = WT.windowSize();
 
-     if (typeof (window.screenLeft) === 'number') {
-       width = window.screenLeft;
-       height = window.screenTop;
-     } else if (typeof (window.screenX) === 'number') {
-       width = window.screenX;
-       height = window.screenY;
-     }
+    const xPos = window.screenLeft +
+      Math.max(0, Math.floor((parentSize.x - width) / 2));
+    const yPos = window.screenTop +
+      Math.max(0, Math.floor((parentSize.y - height) / 2));
 
-     return { x: width, y: height };
-   };
+    return { x: xPos, y: yPos };
+  }
 
-   function computePopupPos(width, height) {
-     var parentSize = WT.windowSize();
-     var parentPos = getScreenPos();
+  const coordinates = computePopupPos(width, height);
+  const w = window.open(
+    url,
+    "",
+    "width=" + width + ",height=" + height +
+      ",status=yes,location=yes,resizable=yes,scrollbars=yes" +
+      ",left=" + coordinates.x + ",top=" + coordinates.y
+  );
+  w.opener = window;
 
-     var xPos = parentPos.x +
-       Math.max(0, Math.floor((parentSize.x - width) / 2));
-     var yPos = parentPos.y +
-       Math.max(0, Math.floor((parentSize.y - height) / 2));
-
-     return { x: xPos, y: yPos };
-   }
-
-   var coordinates = computePopupPos(width, height);
-   var w = window.open(url, "",
-	       "width=" + width + ",height=" + height +
-	       ",status=yes,location=yes,resizable=yes,scrollbars=yes" +
-	       ",left=" + coordinates.x + ",top=" + coordinates.y);
-   w.opener = window;
-
-   if (onclose) {
-     var timer = setInterval(function() {
-	 if (w.closed) {
-	   clearInterval(timer);
-	   onclose(w);
-	 }
-       }, 500);
-   }
- });
+  if (onclose) {
+    const timer = setInterval(function() {
+      if (w.closed) {
+        clearInterval(timer);
+        onclose(w);
+      }
+    }, 500);
+  }
+});

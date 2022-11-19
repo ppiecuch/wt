@@ -4,6 +4,7 @@
  * See the LICENSE file for terms of use.
  */
 #include "Wt/WApplication.h"
+#include "Wt/WBootstrap5Theme.h"
 #include "Wt/WContainerWidget.h"
 #include "Wt/WDialog.h"
 #include "Wt/WEnvironment.h"
@@ -56,8 +57,8 @@ public:
     for (unsigned i = dialogs_.size(); i > 0; --i) {
       unsigned j = i - 1;
       if (dialogs_[j]->isModal()) {
-	topModal = dialogs_[j];
-	break;
+        topModal = dialogs_[j];
+        break;
       }
     }
 
@@ -78,10 +79,10 @@ public:
       unsigned j = i - 1;
 
       if (dialogs_[j]->isExposed(w))
-	return true;
+        return true;
 
       if (dialogs_[j]->isModal())
-	return isInOtherPopup(w);
+        return isInOtherPopup(w);
     }
 
     return false;
@@ -114,18 +115,18 @@ private:
     if (dialog) {
       if (isHidden()) {
 
-	if (!animation.empty())
-	  animateShow(WAnimation(AnimationEffect::Fade,
-				 TimingFunction::Linear,
-				 animation.duration() * 4));
-	else
-	  show();
+        if (!animation.empty())
+          animateShow(WAnimation(AnimationEffect::Fade,
+                                 TimingFunction::Linear,
+                                 animation.duration() * 4));
+        else
+          show();
 
-	WApplication::instance()->pushExposedConstraint(this);
+        WApplication::instance()->pushExposedConstraint(this);
       }
-	
+
       dialog->doJSAfterLoad("setTimeout(function() {"
-       + WApplication::instance()->javaScriptClass() 
+       + WApplication::instance()->javaScriptClass()
        + "._p_.updateGlobal('" + dialog->layoutContainer_->id() + "') }"
        ", 0);"
        );
@@ -137,19 +138,19 @@ private:
       WApplication *app = WApplication::instance();
       app->theme()->apply(app->domRoot(), this, DialogCoverWidget);
     } else {
-	//call updateGlobal(null)
+        //call updateGlobal(null)
       WApplication::instance()->doJavaScript("setTimeout(function() {"
-	    + WApplication::instance()->javaScriptClass() 
-	    + "._p_.updateGlobal(null) });");
+            + WApplication::instance()->javaScriptClass()
+            + "._p_.updateGlobal(null) });");
       if (!isHidden()) {
-	if (!animation.empty())
-	  animateHide(WAnimation(AnimationEffect::Fade,
-				 TimingFunction::Linear,
-				 animation.duration() * 4));
-	else
-	  hide();
+        if (!animation.empty())
+          animateHide(WAnimation(AnimationEffect::Fade,
+                                 TimingFunction::Linear,
+                                 animation.duration() * 4));
+        else
+          hide();
 
-	WApplication::instance()->popExposedConstraint(this);
+        WApplication::instance()->popExposedConstraint(this);
       }
     }
   }
@@ -162,9 +163,9 @@ private:
     std::string result;
     for (unsigned i = 0; i < classes.size(); ++i) {
       if (!classes[i].empty() && !boost::starts_with(classes[i], "Wt-")) {
-	if (!result.empty())
-	  result += " ";
-	result += classes[i] + "-cover";
+        if (!result.empty())
+          result += " ";
+        result += classes[i] + "-cover";
       }
     }
 
@@ -180,10 +181,10 @@ private:
      */
     for (WWidget *p = w; p; p = p->parent()) {
       if (dynamic_cast<WDialog *>(p))
-	return false;
+        return false;
 
       if (p == app->domRoot())
-	return w != app->root();
+        return w != app->root();
 
       w = p;
     }
@@ -194,7 +195,7 @@ private:
 
 WDialog::WDialog()
   : WPopupWidget(std::unique_ptr<WWidget>
-		 (new WTemplate(tr("Wt.WDialog.template")))),
+                 (new WTemplate(tr("Wt.WDialog.template")))),
     moved_(this, "moved"),
     resized_(this, "resized"),
     zIndexChanged_(this, "zIndexChanged")
@@ -204,7 +205,7 @@ WDialog::WDialog()
 
 WDialog::WDialog(const WString& windowTitle)
   : WPopupWidget(std::unique_ptr<WWidget>
-		 (new WTemplate(tr("Wt.WDialog.template")))),
+                 (new WTemplate(tr("Wt.WDialog.template")))),
     moved_(this, "moved"),
     resized_(this, "resized"),
     zIndexChanged_(this, "zIndexChanged")
@@ -234,39 +235,39 @@ void WDialog::create()
       app->styleSheet().addRule("body", "height: 100%;");
 
     std::string position
-      = app->environment().agent() 
+      = app->environment().agent()
       == UserAgent::IE6 ? "absolute" : "fixed";
 
     // we use left: 50%, top: 50%, margin hack when JavaScript is not available
     // see below for an IE workaround
     app->styleSheet().addRule("div.Wt-dialog", std::string()
-			      //"position: " + position + ';'
-			      + (!app->environment().ajax() ?
-				 "left: 50%; top: 50%;"
-				 "margin-left: -100px; margin-top: -50px;" :
-				 "left: 0px; top: 0px;"),
-			      CSS_RULES_NAME);
+                              //"position: " + position + ';'
+                              + (!app->environment().ajax() ?
+                                 "left: 50%; top: 50%;"
+                                 "margin-left: -100px; margin-top: -50px;" :
+                                 "left: 0px; top: 0px;"),
+                              CSS_RULES_NAME);
 
     if (app->environment().agent() == UserAgent::IE6) {
       app->styleSheet().addRule
-	("div.Wt-dialogcover",
-	 "position: absolute;"
-	 "left: expression("
-	 "(ignoreMe2 = document.documentElement.scrollLeft) + 'px' );"
-	 "top: expression("
-	 "(ignoreMe = document.documentElement.scrollTop) + 'px' );");
+        ("div.Wt-dialogcover",
+         "position: absolute;"
+         "left: expression("
+         "(ignoreMe2 = document.documentElement.scrollLeft) + 'px' );"
+         "top: expression("
+         "(ignoreMe = document.documentElement.scrollTop) + 'px' );");
 
       // simulate position: fixed left: 50%; top 50%
       if (!app->environment().ajax())
-	app->styleSheet().addRule
-	  ("div.Wt-dialog",
-	   "position: absolute;"
-	   "left: expression("
-	   "(ignoreMe2 = document.documentElement.scrollLeft + "
-	   "document.documentElement.clientWidth/2) + 'px' );"
-	   "top: expression("
-	   "(ignoreMe = document.documentElement.scrollTop + "
-	   "document.documentElement.clientHeight/2) + 'px' );");
+        app->styleSheet().addRule
+          ("div.Wt-dialog",
+           "position: absolute;"
+           "left: expression("
+           "(ignoreMe2 = document.documentElement.scrollLeft + "
+           "document.documentElement.clientWidth/2) + 'px' );"
+           "top: expression("
+           "(ignoreMe = document.documentElement.scrollTop + "
+           "document.documentElement.clientHeight/2) + 'px' );");
     }
   }
 
@@ -287,10 +288,8 @@ void WDialog::create()
   titleBar_ = new WContainerWidget();
   app->theme()->apply(this, titleBar_, DialogTitleBar);
 
-  caption_ = new WText();
-  caption_->setInline(false);
-  titleBar_->addWidget(std::unique_ptr<WText>(caption_));
-  
+  caption_ = titleBar_->addNew<WTemplate>(tr("Wt.WDialog.titlebar"));
+
   contents_ = new WContainerWidget();
   app->theme()->apply(this, contents_, DialogBody);
 
@@ -315,7 +314,7 @@ void WDialog::create()
       setPositionScheme(PositionScheme::Fixed);
   } else
     setPositionScheme(app->environment().agent() == UserAgent::IE6
-		      ? PositionScheme::Absolute : PositionScheme::Fixed);
+                      ? PositionScheme::Absolute : PositionScheme::Fixed);
 
   setMovable(true);
 
@@ -355,12 +354,12 @@ void WDialog::setResizable(bool resizable)
     if (resizable_) {
       Resizable::loadJavaScript(WApplication::instance());
       setJavaScriptMember
-	(" Resizable",
-	 "(new " WT_CLASS ".Resizable("
-	 WT_CLASS "," + jsRef() + ")).onresize(function(w, h, done) {"
-	 "var obj = " + jsRef() + ".wtObj;"
-	 "if (obj) obj.onresize(w, h, done);"
-	 " });");
+        (" Resizable",
+         "(new " WT_CLASS ".Resizable("
+         WT_CLASS "," + jsRef() + ")).onresize(function(w, h, done) {"
+         "var obj = " + jsRef() + ".wtObj;"
+         "if (obj) obj.onresize(w, h, done);"
+         " });");
     }
   }
 }
@@ -403,25 +402,25 @@ void WDialog::render(WFlags<RenderFlag> flags)
      */
     if (app->environment().ajax())
       if (width().isAuto())
-	if (maximumWidth().unit() == LengthUnit::Percentage ||
-	    maximumWidth().toPixels() == 0)
-	  impl_->resolveWidget("layout")->setMaximumSize(999999,
-							 maximumHeight());
+        if (maximumWidth().unit() == LengthUnit::Percentage ||
+            maximumWidth().toPixels() == 0)
+          impl_->resolveWidget("layout")->setMaximumSize(999999,
+                                                         maximumHeight());
 
     doJavaScript("new " WT_CLASS ".WDialog("
-		 + app->javaScriptClass() + "," + jsRef()
-		 + "," + titleBar_->jsRef()
-		 + "," + (movable_ ? "1" : "0")
-		 + "," + (centerX ? "1" : "0")
-		 + "," + (centerY ? "1" : "0") 
-		 + "," + (moved_.isConnected()
-			  ? '"' + moved_.name() + '"' 
-			  : "null")
-		 + "," + (resized_.isConnected()
-			  ? '"' + resized_.name() + '"' 
-			  : "null")
+                 + app->javaScriptClass() + "," + jsRef()
+                 + "," + titleBar_->jsRef()
+                 + "," + (movable_ ? "1" : "0")
+                 + "," + (centerX ? "1" : "0")
+                 + "," + (centerY ? "1" : "0")
+                 + "," + (moved_.isConnected()
+                          ? '"' + moved_.name() + '"'
+                          : "null")
+                 + "," + (resized_.isConnected()
+                          ? '"' + resized_.name() + '"'
+                          : "null")
                  + ",\"" + zIndexChanged_.name() + '"'
-		 + ");");
+                 + ");");
 
     for (std::size_t i = 0; i < delayedJs_.size(); ++i) {
       doJavaScript(delayedJs_[i]);
@@ -435,14 +434,12 @@ void WDialog::render(WFlags<RenderFlag> flags)
      */
     if (!app->environment().agentIsIElt(9) &&
         !app->environment().ajax()) {
-      std::string js = WString::tr("Wt.WDialog.CenterJS").toUTF8();
+      std::string js = WString::tr("Wt.WDialog.CenterJS").toXhtmlUTF8();
       Utils::replace(js, "$el", "'" + id() + "'");
       Utils::replace(js, "$centerX", centerX ? "1" : "0");
       Utils::replace(js, "$centerY", centerY ? "1" : "0");
 
-      impl_->bindString
-	("center-script", "<script>" + Utils::htmlEncode(js)
-	 + "</script>", TextFormat::UnsafeXHTML);
+      impl_->bindString("center-script", "<script>" + js + "</script>", TextFormat::UnsafeXHTML);
     } else
       impl_->bindEmpty("center-script");
   }
@@ -469,18 +466,12 @@ void WDialog::rejectWhenEscapePressed(bool enable)
 
 void WDialog::setWindowTitle(const WString& windowTitle)
 {
-  caption_->setText
-    (WString::fromUTF8("<h4>" + Utils::htmlEncode(windowTitle.toUTF8())
-		       + "</h4>"));
+  caption_->bindString("title", windowTitle, TextFormat::Plain);
 }
 
 WString WDialog::windowTitle() const
 {
-  std::string text = caption_->text().toUTF8();
-  if (text.length() > 9)
-    return WString::fromUTF8(text.substr(4, text.length() - 9));
-  else
-    return WString::Empty;
+  return caption_->resolveStringValue("title");
 }
 
 void WDialog::setTitleBarEnabled(bool enable)
@@ -492,10 +483,13 @@ void WDialog::setClosable(bool closable)
 {
   if (closable) {
     if (!closeIcon_) {
-      std::unique_ptr<WText> closeIcon(closeIcon_ = new WText());
-      titleBar_->insertWidget(0, std::move(closeIcon));
-      WApplication::instance()->theme()->apply
-	(this, closeIcon_, DialogCloseIcon);
+      auto theme = WApplication::instance()->theme();
+      if (std::dynamic_pointer_cast<WBootstrap5Theme>(theme)) {
+        closeIcon_ = titleBar_->addNew<WPushButton>();
+      } else {
+        closeIcon_ = titleBar_->insertWidget(0, std::make_unique<WText>());
+      }
+      theme->apply(this, closeIcon_, DialogCloseIcon);
       closeIcon_->clicked().connect(this, &WDialog::reject);
     }
   } else {
@@ -513,9 +507,9 @@ DialogCode WDialog::exec(const WAnimation& animation)
 
 #ifdef WT_TARGET_JAVA
   if (!WebController::isAsyncSupported())
-     throw WException("WDialog#exec() requires a Servlet 3.0 enabled servlet " 
-		      "container and an application with async-supported "
-		      "enabled.");
+     throw WException("WDialog#exec() requires a Servlet 3.0 enabled servlet "
+                      "container and an application with async-supported "
+                      "enabled.");
 #endif
 
   WApplication *app = WApplication::instance();
@@ -573,8 +567,8 @@ void WDialog::onDefaultPressed()
     for (int i = 0; i < footer()->count(); ++i) {
       WPushButton *b = dynamic_cast<WPushButton *>(footer()->widget(i));
       if (b && b->isDefault()) {
-	if (b->isEnabled())
-	  b->clicked().emit(WMouseEvent());
+        if (b->isEnabled())
+          b->clicked().emit(WMouseEvent());
         break;
       }
     }
@@ -594,17 +588,17 @@ void WDialog::setHidden(bool hidden, const WAnimation& animation)
   if (contents_ && isHidden() != hidden) {
     if (!hidden) {
       if (footer_) {
-	for (int i = 0; i < footer()->count(); ++i) {
-	  WPushButton *b = dynamic_cast<WPushButton *>(footer()->widget(i));
-	  if (b && b->isDefault()) {
+        for (int i = 0; i < footer()->count(); ++i) {
+          WPushButton *b = dynamic_cast<WPushButton *>(footer()->widget(i));
+          if (b && b->isDefault()) {
             enterConnection1_ = enterPressed()
               .connect(this, &WDialog::onDefaultPressed);
 
-	    enterConnection2_ = impl_->enterPressed()
-	      .connect(this, &WDialog::onDefaultPressed);
-	    break;
-	  }
-	}
+            enterConnection2_ = impl_->enterPressed()
+              .connect(this, &WDialog::onDefaultPressed);
+            break;
+          }
+        }
       }
 
       if (escapeIsReject_) {
@@ -616,8 +610,8 @@ void WDialog::setHidden(bool hidden, const WAnimation& animation)
             .connect(this, &WDialog::onEscapePressed);
         }
 
-	escapeConnection2_ = impl_->escapePressed()
-	  .connect(this, &WDialog::onEscapePressed);
+        escapeConnection2_ = impl_->escapePressed()
+          .connect(this, &WDialog::onEscapePressed);
       }
     } else {
       escapeConnection1_.disconnect();
@@ -629,24 +623,24 @@ void WDialog::setHidden(bool hidden, const WAnimation& animation)
     DialogCover *c = cover();
     if (!hidden) {
       if (c)
-	c->pushDialog(this, animation);
-    
+        c->pushDialog(this, animation);
+
       if (modal_) {
         doJSAfterLoad
-	  ("try {"
-	   """var ae=document.activeElement;"
-	   // On IE when a dialog is shown on startup, activeElement is the
-	   // body. Bluring the body sends the window to the background if
-	   // it is the only tab.
-	   // http://redmine.emweb.be/boards/2/topics/6415
-	   """if (ae && ae.blur && ae.nodeName != 'BODY') {"
-	   ""  "document.activeElement.blur();"
-	   "}"
-	   "} catch (e) { }");
+          ("try {"
+           """var ae=document.activeElement;"
+           // On IE when a dialog is shown on startup, activeElement is the
+           // body. Bluring the body sends the window to the background if
+           // it is the only tab.
+           // http://redmine.emweb.be/boards/2/topics/6415
+           """if (ae && ae.blur && ae.nodeName != 'BODY') {"
+           ""  "document.activeElement.blur();"
+           "}"
+           "} catch (e) { }");
       }
     } else {
       if (c)
-	c->popDialog(this, animation);
+        c->popDialog(this, animation);
     }
   }
 
@@ -665,12 +659,12 @@ void WDialog::positionAt(const Wt::WMouseEvent& ev)
 {
   setPositionScheme(PositionScheme::Fixed);
   if (wApp->environment().javaScript()) {
-	setOffsets(ev.window().x, Side::Left);
-	setOffsets(ev.window().y, Side::Top);
+        setOffsets(ev.window().x, Side::Left);
+        setOffsets(ev.window().y, Side::Top);
   }
 }
 
-DialogCover *WDialog::cover() 
+DialogCover *WDialog::cover()
 {
   WApplication *app = WApplication::instance();
 
@@ -704,7 +698,7 @@ void WDialog::raiseToFront()
 {
   doJSAfterLoad(jsRef() + ".wtObj.bringToFront()");
   DialogCover *c = cover();
-  c->bringToFront(this);  
+  c->bringToFront(this);
 }
 
 void WDialog::zIndexChanged(int zIndex)

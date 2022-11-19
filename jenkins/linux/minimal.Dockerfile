@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:20.04
 
 ARG USER_ID
 ARG USER_NAME
@@ -20,13 +20,14 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     ca-certificates \
     git \
     build-essential \
+    cmake \
     ccache \
     libunwind-dev \
  && rm -rf /var/lib/apt/lists/*
 
-RUN BOOST_VERSION=1.50.0 ;\
+RUN BOOST_VERSION=1.71.0 ;\
     BOOSTDIR=boost_${BOOST_VERSION//[.]/_} ;\
-    wget https://sourceforge.net/projects/boost/files/boost/${BOOST_VERSION}/${BOOSTDIR}.tar.bz2 -O ${BOOSTDIR}.tar.bz2 \
+    wget https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/${BOOSTDIR}.tar.bz2 -O ${BOOSTDIR}.tar.bz2 \
  && tar xf ${BOOSTDIR}.tar.bz2 \
  && rm ${BOOSTDIR}.tar.bz2 \
  && (cd ${BOOSTDIR} \
@@ -40,7 +41,14 @@ RUN BOOST_VERSION=1.50.0 ;\
           install) \
  && rm -rf ${BOOSTDIR}
 
-RUN wget https://cmake.org/files/v3.1/cmake-3.1.3-Linux-x86_64.tar.gz -O cmake-3.1.3-Linux-x86_64.tar.gz \
- && tar xf cmake-3.1.3-Linux-x86_64.tar.gz \
- && rm cmake-3.1.3-Linux-x86_64.tar.gz \
- && mv cmake-3.1.3-Linux-x86_64 /opt/cmake
+USER ${USER_ID}
+
+RUN cd "${HOME}" && wget -qO- https://get.pnpm.io/install.sh | bash -
+
+RUN export PNPM_HOME="${HOME}/.local/share/pnpm"; \
+    export PATH="${PNPM_HOME}:${PATH}"; \
+    cd "${HOME}" \
+ && pnpm env use --global lts \
+ && pnpm config set store-dir "${HOME}/.pnpm-store"
+
+USER root

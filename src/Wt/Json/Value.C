@@ -20,31 +20,31 @@ LOGGER("Json.Value");
 
     namespace {
       const char *typeNames[] = {
-	"Null",
-	"String",
-	"Bool",
-	"Number",
-	"Object",
-	"Array"
+        "Null",
+        "String",
+        "Bool",
+        "Number",
+        "Object",
+        "Array"
       };
     }
 
 TypeException::TypeException(const std::string& name,
-			     Type actualType, Type expectedType)
-  : WException("Type error: " + name + " is " 
-	       + typeNames[static_cast<unsigned int>(actualType)]
-	       + ", expected " 
-	       + typeNames[static_cast<unsigned int>(expectedType)]),
+                             Type actualType, Type expectedType)
+  : WException("Type error: " + name + " is "
+               + typeNames[static_cast<unsigned int>(actualType)]
+               + ", expected "
+               + typeNames[static_cast<unsigned int>(expectedType)]),
     name_(name),
     actualType_(actualType),
     expectedType_(expectedType)
 { }
 
 TypeException::TypeException(Type actualType, Type expectedType)
-  : WException(std::string("Type error: value is ") 
-	       + typeNames[static_cast<unsigned int>(actualType)]
-	       + ", expected " 
-	       + typeNames[static_cast<unsigned int>(expectedType)]),
+  : WException(std::string("Type error: value is ")
+               + typeNames[static_cast<unsigned int>(actualType)]
+               + ", expected "
+               + typeNames[static_cast<unsigned int>(expectedType)]),
     actualType_(actualType),
     expectedType_(expectedType)
 { }
@@ -101,6 +101,11 @@ Value::Value(WT_USTRING&& value)
 Value::Value(int value)
   : v_(value)
 { }
+
+Value::Value(long value)
+  : v_(value)
+{ }
+
 
 Value::Value(long long value)
   : v_(value)
@@ -190,6 +195,8 @@ bool Value::operator== (const Value& other) const
     return cpp17::any_cast<bool>(v_) == cpp17::any_cast<bool>(other.v_);
   else if (v_.type() == typeid(int))
     return cpp17::any_cast<int>(v_) == cpp17::any_cast<int>(other.v_);
+  else if (v_.type() == typeid(long))
+    return cpp17::any_cast<long>(v_) == cpp17::any_cast<long>(other.v_);
   else if (v_.type() == typeid(long long))
     return cpp17::any_cast<long long>(v_) ==
       cpp17::any_cast<long long>(other.v_);
@@ -227,7 +234,7 @@ Type Value::typeOf(const std::type_info& t)
 {
   if (t == typeid(bool))
     return Type::Bool;
-  else if (t == typeid(double) || t == typeid(long long) || t == typeid(int))
+  else if (t == typeid(double) || t == typeid(long long) || t == typeid(int) || t == typeid(long))
     return Type::Number;
   else if (t == typeid(WT_USTRING))
     return Type::String;
@@ -237,7 +244,7 @@ Type Value::typeOf(const std::type_info& t)
     return Type::Array;
   else
     throw WException(std::string("Value::typeOf(): unsupported type ")
-		     + t.name());
+                     + t.name());
 }
 
 Value::operator const WT_USTRING&() const
@@ -261,10 +268,28 @@ Value::operator int() const
 
   if (t == typeid(double))
     return static_cast<int>(cpp17::any_cast<double>(v_));
+  else if (t == typeid(long))
+    return static_cast<int>(cpp17::any_cast<long>(v_));
   else if (t == typeid(long long))
     return static_cast<int>(cpp17::any_cast<long long>(v_));
   else if (t == typeid(int))
     return cpp17::any_cast<int>(v_);
+  else
+    throw TypeException(type(), Type::Number);
+}
+
+Value::operator long() const
+{
+  const std::type_info& t = v_.type();
+
+  if (t == typeid(double))
+    return static_cast<long>(cpp17::any_cast<double>(v_));
+  else if (t == typeid(long))
+    return cpp17::any_cast<long>(v_);
+  else if (t == typeid(long long))
+    return static_cast<long>(cpp17::any_cast<long long>(v_));
+  else if (t == typeid(int))
+    return static_cast<long>(cpp17::any_cast<int>(v_));
   else
     throw TypeException(type(), Type::Number);
 }
@@ -275,6 +300,8 @@ Value::operator long long() const
 
   if (t == typeid(double))
     return static_cast<long long>(cpp17::any_cast<double>(v_));
+  else if (t == typeid(long))
+    return static_cast<long long>(cpp17::any_cast<long>(v_));
   else if (t == typeid(long long))
     return cpp17::any_cast<long long>(v_);
   else if (t == typeid(int))
@@ -289,6 +316,8 @@ Value::operator double() const
 
   if (t == typeid(double))
     return cpp17::any_cast<double>(v_);
+  else if (t == typeid(long))
+    return static_cast<double>(cpp17::any_cast<long>(v_));
   else if (t == typeid(long long))
     return static_cast<double>(cpp17::any_cast<long long>(v_));
   else if (t == typeid(int))
@@ -397,11 +426,11 @@ Value Value::toString() const
   else if(type() == Type::Number) {
     WString str = asString(v_);
     std::string sstr = str.toUTF8();
-    if (sstr.find("nan") != std::string::npos || 
-	sstr.find("inf") != std::string::npos)
+    if (sstr.find("nan") != std::string::npos ||
+        sstr.find("inf") != std::string::npos)
       throw WException(std::string("Value::toString(): Not a Number"));
     return Value(str);
-  } else 
+  } else
     return Value(asString(v_));
 }
 
@@ -431,7 +460,7 @@ Value Value::toNumber() const
 
   if (t == typeid(Object) || t == typeid(Array))
     return Null;
-  else if (t == typeid(double) || t == typeid(long long) || t == typeid(int))
+  else if (t == typeid(double) || t == typeid(long long) || t == typeid(int) || t == typeid(long))
     return *this;
   else if (t == typeid(WT_USTRING)) {
     const WT_USTRING& s = cpp17::any_cast<const WT_USTRING& >(v_);

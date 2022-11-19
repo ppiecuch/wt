@@ -40,11 +40,8 @@ FILE(GLOB GAMESERVER_REST_SOURCE_FILES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
   rest/*.C
   db/*.C
   sysmon/*.C
-  lua/*.c lua/*.C
-  lua/luacpp/*.cpp
-  lua/luacpp/Engine/*.cpp
-  lua/luacpp/Registry/*.cpp
   common/*.C
+  config/*.c config/*.C
   resources/*.css
 )
 

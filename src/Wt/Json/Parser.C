@@ -21,14 +21,10 @@
 #include "3rdparty/rapidxml/rapidxml.hpp"
 
 #include <boost/spirit/include/qi.hpp>
-#include <boost/spirit/include/phoenix_core.hpp>
-#include <boost/spirit/include/phoenix_operator.hpp>
-#include <boost/spirit/include/phoenix_object.hpp>
-#if BOOST_VERSION < 105600
-#include <boost/spirit/home/phoenix/statement/throw.hpp>
-#else
-#include <boost/phoenix.hpp>
-#endif
+#include <boost/phoenix/core.hpp>
+#include <boost/phoenix/object.hpp>
+#include <boost/phoenix/operator.hpp>
+#include <boost/phoenix/statement.hpp>
 
 #include <boost/bind/bind.hpp>
 
@@ -122,7 +118,7 @@ struct json_grammar : public qi::grammar<Iterator, ascii::space_type>
     using phoenix::construct;
     using phoenix::val;
     using phoenix::throw_;
-        
+
     root
       = object | array;
 
@@ -132,7 +128,7 @@ struct json_grammar : public qi::grammar<Iterator, ascii::space_type>
 
       --recursionDepth_;
     };
-    
+
     object
       =  lit('{')[boost::bind(&Self::startObject, this, boost::arg<3>())]
       >> -(member % ',')
@@ -146,10 +142,10 @@ struct json_grammar : public qi::grammar<Iterator, ascii::space_type>
       currentValue_ = &((currentObject())[s_.str()] = Value::Null);
       s_.clear();
     };
-                
+
     member
       = raw[string][setMemberName]
-      >> lit(':') 
+      >> lit(':')
       >> value
       ;
 
@@ -160,8 +156,8 @@ struct json_grammar : public qi::grammar<Iterator, ascii::space_type>
 
       --recursionDepth_;
     };
-                
-    array 
+
+    array
       = lit('[')[boost::bind(&Self::startArray, this, boost::arg<3>())]
       >> -(value % ',')
       >> lit(']')[endArray]
@@ -205,7 +201,7 @@ struct json_grammar : public qi::grammar<Iterator, ascii::space_type>
       currentValue_ = nullptr;
     };
 
-    value 
+    value
       = raw[string][setStringValue]
       | double_[setNumberValue]
       | lit("true")[setTrueValue]
@@ -316,11 +312,11 @@ namespace {
 
     if (success) {
       if (begin != end)
-	throw ParseError("Error parsing json: Expected end here:\""
-			 + std::string(begin, end) + "\"");
+        throw ParseError("Error parsing json: Expected end here:\""
+                         + std::string(begin, end) + "\"");
     } else
       throw ParseError("Error parsing json: \"" + std::string(begin, end)
-		       + "\"");
+                       + "\"");
   }
 }
 
@@ -328,7 +324,7 @@ namespace {
   void parseJson(const std::string &str, Value& result, bool validateUTF8)
   {
     throw ParseError("Wt::Json::parse requires boost version 1.41 or later");
-  }  
+  }
 
 #endif // JSON_PARSER
 

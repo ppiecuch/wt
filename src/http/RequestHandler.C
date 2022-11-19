@@ -15,6 +15,9 @@
 
 #include "RequestHandler.h"
 
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/utility/string_view.hpp>
+
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -32,7 +35,7 @@ namespace {
       return b - '0';
     else if (b <= 'F')
       return (b - 'A') + 0x0A;
-    else 
+    else
       return (b - 'a') + 0x0A;
   }
 
@@ -46,8 +49,8 @@ namespace http {
 namespace server {
 
 RequestHandler::RequestHandler(const Configuration &config,
-			       const Wt::Configuration& wtConfig,
-			       Wt::WLogger& logger)
+                               const Wt::Configuration& wtConfig,
+                               Wt::WLogger& logger)
   : config_(config),
     wtConfig_(wtConfig),
     logger_(logger),
@@ -64,9 +67,9 @@ void RequestHandler::setSessionManager(SessionProcessManager *sessionManager)
  * and do it and create a Reply object which will do it.
  */
 ReplyPtr RequestHandler::handleRequest(Request& req,
-				       ReplyPtr& lastWtReply,
-				       ReplyPtr& lastProxyReply,
-				       ReplyPtr& lastStaticReply)
+                                       ReplyPtr& lastWtReply,
+                                       ReplyPtr& lastProxyReply,
+                                       ReplyPtr& lastStaticReply)
 {
   if ((req.method != "GET")
       && (req.method != "HEAD")
@@ -78,8 +81,8 @@ ReplyPtr RequestHandler::handleRequest(Request& req,
     return ReplyPtr(new StockReply(req, Reply::not_implemented, "", config_));
 
   if ((req.http_version_major != 1)
-      || (req.http_version_minor != 0 
-	  && req.http_version_minor != 1))
+      || (req.http_version_minor != 0
+          && req.http_version_minor != 1))
     return ReplyPtr(new StockReply(req, Reply::version_not_supported, "", config_));
 
   // Decode url to path.
@@ -99,8 +102,8 @@ ReplyPtr RequestHandler::handleRequest(Request& req,
   if (!config_.defaultStatic()) {
     for (unsigned i = 0; i < config_.staticPaths().size(); ++i) {
       if (Wt::Configuration::matchesPath(req.request_path, config_.staticPaths()[i], true)) {
-	isStaticFile = true;
-	break;
+        isStaticFile = true;
+        break;
       }
     }
   }
@@ -119,21 +122,21 @@ ReplyPtr RequestHandler::handleRequest(Request& req,
       req.url_params = std::move(bestMatch.urlParams);
 
       if (wtConfig_.sessionPolicy() != Wt::Configuration::DedicatedProcess ||
-	  ep.type() == Wt::EntryPointType::StaticResource ||
-	  config_.parentPort() != -1) {
-	if (!lastWtReply)
-	  lastWtReply.reset(new WtReply(req, ep, config_));
-	else
-	  lastWtReply->reset(&ep);
+          ep.type() == Wt::EntryPointType::StaticResource ||
+          config_.parentPort() != -1) {
+        if (!lastWtReply)
+          lastWtReply.reset(new WtReply(req, ep, config_));
+        else
+          lastWtReply->reset(&ep);
 
-	return lastWtReply;
+        return lastWtReply;
       } else {
-	if (!lastProxyReply)
-	  lastProxyReply.reset(new ProxyReply(req, config_, *sessionManager_));
-	else
-	  lastProxyReply->reset(nullptr);
+        if (!lastProxyReply)
+          lastProxyReply.reset(new ProxyReply(req, config_, *sessionManager_));
+        else
+          lastProxyReply->reset(nullptr);
 
-	return lastProxyReply;
+        return lastProxyReply;
       }
 
       // return ReplyPtr(new WtReply(req, ep, config_));
@@ -151,7 +154,7 @@ ReplyPtr RequestHandler::handleRequest(Request& req,
 }
 
 bool RequestHandler::url_decode(const buffer_string& in, std::string& path,
-				std::string& query)
+                                std::string& query)
 {
   path.clear();
 
@@ -168,8 +171,8 @@ bool RequestHandler::url_decode(const buffer_string& in, std::string& path,
     len = in.len;
   }
 
-  // Only allow origin form and asterisk form (RFC 7230 5.3.1 and 5.3.4)
-  if (len > 0 && d[0] != '/' && !(len == 1 && d[0] == '*'))
+  // Only allow origin form (RFC 9112 3.2.1)
+  if (!boost::starts_with(boost::string_view(d, len), "/"))
     return false;
 
   path.reserve(len);
@@ -177,8 +180,8 @@ bool RequestHandler::url_decode(const buffer_string& in, std::string& path,
   for (unsigned i = 0; i < len; ++i) {
     if (d[i] == '%') {
       if (i + 2 < len) {
-	path += fromHex(d[i + 1], d[i + 2]);
-	i += 2;	
+        path += fromHex(d[i + 1], d[i + 2]);
+        i += 2;
       } else
         return false;
     } else if (d[i] == '?') {

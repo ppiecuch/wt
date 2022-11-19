@@ -70,7 +70,7 @@ void Session::configureAuth() {
   passwordService.setAttemptThrottlingEnabled(true);
 }
 
-std::unique_ptr<Dbo::SqlConnectionPool> Session::createConnectionPool() {
+std::unique_ptr<Dbo::SqlConnectionPool> Session::createConnectionPool(std::string &connection_string) {
   static const char *_backends[] = {
 #ifdef DEBUG
     "sq://server-debug.db"
@@ -82,6 +82,8 @@ std::unique_ptr<Dbo::SqlConnectionPool> Session::createConnectionPool() {
     nullptr
   };
 
+  connection_string = "";
+
   for (auto conn = _backends; *conn; conn++) {
     if (strncmp(*conn, "pq://", 5) == 0) {
 #ifdef DBO_POSTGRES
@@ -91,6 +93,7 @@ std::unique_ptr<Dbo::SqlConnectionPool> Session::createConnectionPool() {
 #ifdef DEBUG
       result->setProperty("show-queries", "true");
 #endif
+      connection_string = *conn;
       return std::make_unique<Dbo::FixedSqlConnectionPool>(std::move(result), 10);
       }
 #endif
@@ -101,10 +104,11 @@ std::unique_ptr<Dbo::SqlConnectionPool> Session::createConnectionPool() {
 #ifdef DEBUG
         result->setProperty("show-queries", "true");
 #endif
+        connection_string = *conn;
         return std::make_unique<Dbo::FixedSqlConnectionPool>(std::move(result), 5);
       }
     } else
-      LogInfo(std::string("Unknow connection: ") + *conn);
+      LogInfo(std::string("Unknow connection string: ") + *conn);
   }
   throw std::runtime_error("Unable to open database");
 }
@@ -113,35 +117,26 @@ Session::Session(Dbo::SqlConnectionPool *connectionPool) : connectionPool_(conne
   setConnectionPool(*connectionPool_);
 
   users_ = std::make_unique<AuthUserDatabase>(dbo());
-
-  Dbo::Transaction transaction(dbo());
-
-  // Add a default guest/guest account
-  Auth::User guestUser = users_->registerNew();
-  guestUser.addIdentity(Auth::Identity::LoginName, "guest");
-  passwordService.updatePassword(guestUser, "guest");
-
-  transaction.commit();
 }
 
 Session::~Session() { }
 
-DboUser Session::user() const {
+DboPlayer Session::player() const {
   if (login_.loggedIn()) {
     DboAuthInfo authInfo = users_->find(login_.user());
-    DboUser user = authInfo->user();
+    DboPlayer user = authInfo->user();
 
     if (!user) {
-      user = const_cast<Session*>(this)->add(std::make_unique<User>());
+      user = const_cast<Session*>(this)->add(std::make_unique<Player>());
       authInfo.modify()->setUser(user);
     }
 
     return user;
   } else
-    return DboUser();
+    return DboPlayer();
 }
 
-std::string Session::userName() const {
+std::string Session::playerName() const {
   if (login_.loggedIn())
     return login_.user().identity(Auth::Identity::LoginName).toUTF8();
   else
@@ -151,7 +146,7 @@ std::string Session::userName() const {
 void Session::addToScore(int s) {
   Dbo::Transaction transaction(dbo());
 
-  DboUser u = user();
+  DboPlayer u = player();
   if (u) {
     u.modify()->score += s;
     ++u.modify()->gamesPlayed;
@@ -161,20 +156,15 @@ void Session::addToScore(int s) {
   transaction.commit();
 }
 
-std::vector<User> Session::topUsers(int limit) {
+std::vector<Player> Session::topPlayers(int limit) {
   Dbo::Transaction transaction(dbo());
 
-  DboUsers top = find<User>().orderBy("score desc").limit(limit);
+  DboPlayers top = find<Player>().orderBy("score desc").limit(limit);
 
-  std::vector<User> result;
-  for (DboUsers::const_iterator i = top.begin(); i != top.end(); ++i) {
-    DboUser user = *i;
+  std::vector<Player> result;
+  for (DboPlayers::const_iterator i = top.begin(); i != top.end(); ++i) {
+    DboPlayer user = *i;
     result.push_back(*user);
-
-    DboAuthInfo auth = *user->authInfos.begin();
-    std::string name = auth->identity(Auth::Identity::LoginName).toUTF8();
-
-    result.back().name = name;
   }
 
   transaction.commit();
@@ -185,7 +175,7 @@ std::vector<User> Session::topUsers(int limit) {
 int Session::findRanking() {
   Dbo::Transaction transaction(dbo());
   
-  DboUser u = user();
+  DboPlayer u = player();
   int ranking = -1;
 
   if (u)

@@ -1,40 +1,30 @@
-FILE(READ ${infile} f0)
-STRING( LENGTH "${f0}" f0_LEN )
-SET( f4 "// This is automatically generated code -- do not edit!\n// Generated from ${file} \n#include <vector>\nnamespace skeletons\n{\n\n" )
-SET( idx 0 )
+# This CMake script encodes a text file as a char array, that is then interpreted as a C string
+# This allows us to embed files into our binaries.
+# An older version would use string literals, but the standard allows compilers to limit the length
+# of string literals, only requiring the limit to be at least 65536 characters, and some compilers like MSVC 2017
+# enforce this. It also causes a -Woverlength-strings warning on Clang. The MSVC compiler also limits the
+# maximum size of a string literal token.
+# This code was inspired by, but is heavily adapted from:
+# https://stackoverflow.com/a/27206982
+# See N4140, annex B, 2.15
+# (https://timsong-cpp.github.io/cppwp/n4140/implimits#2.15)
 
-# Max size for MSVC is 65K, but we're adding CRLFs here too.
-SET( chunklength 55000)
-
-WHILE( f0_LEN GREATER 0 )
-  MATH( EXPR idx "${idx} + 1" )
-  IF( f0_LEN GREATER ${chunklength} )
-    STRING( SUBSTRING "${f0}" 0 ${chunklength} f3_CHUNK )
-    STRING( REGEX REPLACE "\\\\" "\\\\\\\\" f1 "${f3_CHUNK}" )
-    STRING( REGEX REPLACE "\"" "\\\\\"" f2 "${f1}" )
-    STRING( REGEX REPLACE "\r?\n" "\\\\r\\\\n\"\n  \"" f3 "${f2}" )
-    
-    SET( f4 "${f4}\n  const char * ${var}${idx} = \"${f3}\";" )
-    MATH( EXPR f0_LEN "${f0_LEN} - ${chunklength}" )
-    STRING( SUBSTRING "${f0}" ${chunklength} ${f0_LEN} f0)       
-  ELSE(f0_LEN GREATER ${chunklength})
-    STRING( SUBSTRING "${f0}" 0 ${f0_LEN} f3_CHUNK )
-    STRING( REGEX REPLACE "\\\\" "\\\\\\\\" f1 "${f3_CHUNK}" )
-    STRING( REGEX REPLACE "\"" "\\\\\"" f2 "${f1}" )
-    STRING( REGEX REPLACE "\r?\n" "\\\\r\\\\n\"\n  \"" f3 "${f2}" )
-    SET( f4 "${f4}\n  const char * ${var}${idx} = \"${f3}\";" )
-    SET( f0_LEN 0 )
-  ENDIF(f0_LEN GREATER ${chunklength})
-ENDWHILE( f0_LEN GREATER 0 )
-MATH( EXPR idx "${idx} + 1" )
-SET( f4 "${f4}\n  std::vector<const char *> ${var}()\n  {" )
-SET( f4 "${f4}\n    std::vector<const char *> retval;\n")
-SET( id 1 )
-WHILE( ${id} LESS ${idx} )
-  SET( f4 "${f4}\n    retval.push_back(${var}${id});\n")
-  MATH( EXPR id "${id} + 1" )
-ENDWHILE( ${id} LESS ${idx} )
-SET( f4 "${f4}\n    return retval;\n  }")
-SET( f4 "${f4}\n}")
-FILE(WRITE ${outfile} "${f4}")
-
+file(READ ${infile} filedata HEX)
+# Change every pair of hex characters into a 0x literal
+string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," filedata ${filedata})
+# Add line breaks every 16 characters
+string(REGEX REPLACE "([^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,[^,]*,)" "\\1\n    " filedata ${filedata})
+set(outstr "")
+string(APPEND outstr "// This is automatically generated code -- do not edit!\n")
+string(APPEND outstr "// Generated from ${infile}\n")
+string(APPEND outstr "\n")
+string(APPEND outstr "namespace {\n")
+string(APPEND outstr "  const unsigned char ${var}_data[] = {\n")
+string(APPEND outstr "    ${filedata}0x00\n")
+string(APPEND outstr "  };\n")
+string(APPEND outstr "}\n")
+string(APPEND outstr "\n")
+string(APPEND outstr "namespace skeletons {\n")
+string(APPEND outstr "  const char* ${var} = reinterpret_cast<const char*>(${var}_data);\n")
+string(APPEND outstr "}\n")
+file(WRITE ${outfile} "${outstr}")

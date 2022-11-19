@@ -32,7 +32,7 @@ namespace Wt {
 
     WT_API extern WSslCertificate x509ToWSslCertificate(X509 *x);
 
-    Wt::WDateTime dateToWDate(struct asn1_string_st *date);
+    Wt::WDateTime dateToWDate(const struct asn1_string_st *date);
 
     std::string exportToPem(struct x509_st *x509);
 
@@ -40,6 +40,10 @@ namespace Wt {
 
     extern asio::ssl::context createSslContext(asio::io_service &io_service,
                                                bool addCACerts);
+
+    WT_API EVP_PKEY* readPrivateKeyFromFile(const std::string& path);
+
+    WT_API std::string rs256(EVP_PKEY* pkey, const std::string& message);
   }
 }
 #endif //WT_WITH_SSL

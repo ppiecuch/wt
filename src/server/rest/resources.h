@@ -8,7 +8,7 @@ using namespace Wt;
 
 #include <string>
 
-/// Registering and authentication
+/// Device and users registering and authentication
 
 class ApiServiceRegistering  : public WResource {
 

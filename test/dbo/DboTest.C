@@ -112,7 +112,7 @@ namespace Wt {
 
     template <class Action>
     void field(Action& action, Coordinate& coordinate, const std::string& name,
-	       int size = -1)
+               int size = -1)
     {
       field(action, coordinate.x, name + "_x", 1000);
       field(action, coordinate.y, name + "_y", 1000);
@@ -451,10 +451,10 @@ public:
       dbo::belongsTo(a, dthing);
 
       dbo::belongsTo(a, parent, a.session()->template tableName<A>()
-		     + std::string("_parent"));
+                     + std::string("_parent"));
       dbo::hasMany(a, asManyToOne, dbo::ManyToOne,
-		   a.session()->template tableName<A>()
-		   + std::string("_parent"));
+                   a.session()->template tableName<A>()
+                   + std::string("_parent"));
     }
   }
 };
@@ -492,9 +492,9 @@ public:
 
     dbo::hasMany(a, asManyToOne, dbo::ManyToOne, "b");
     dbo::hasMany(a, csManyToMany, dbo::ManyToMany, SCHEMA "b_c", "the_b",
-		   dbo::NotNull
-		 | dbo::OnDeleteCascade
-		 | dbo::OnUpdateCascade);
+                   dbo::NotNull
+                 | dbo::OnDeleteCascade
+                 | dbo::OnUpdateCascade);
     dbo::hasMany(a, csManyToOne, dbo::ManyToOne, "b2");
   }
 };
@@ -528,9 +528,9 @@ public:
     dbo::belongsTo(a, b, "b2");
 
     dbo::hasMany(a, bsManyToMany, dbo::ManyToMany, SCHEMA "b_c", "the_c",
-		   dbo::NotNull
-		 | dbo::OnDeleteCascade
-		 | dbo::OnUpdateCascade );
+                   dbo::NotNull
+                 | dbo::OnDeleteCascade
+                 | dbo::OnUpdateCascade );
     dbo::hasMany(a, dsManyToMany, dbo::ManyToMany, SCHEMA "c_d");
     dbo::hasOne(a, aOneToOne);
     dbo::hasOne(a, dOneToOne, "c_d2");
@@ -837,7 +837,7 @@ BOOST_AUTO_TEST_CASE( dbo_test3 )
       = session_->query<std::string>("select \"name\" from " SCHEMA "\"table_b\"");
 
     for (dbo::collection<std::string>::const_iterator i = names.begin();
-	 i != names.end(); ++i)
+         i != names.end(); ++i)
       std::cerr << *i << std::endl;
   }
 
@@ -904,7 +904,7 @@ BOOST_AUTO_TEST_CASE( dbo_test4 )
     BOOST_REQUIRE(a1->self() == a1);
 
     a1.modify()->datetime = Wt::WDateTime(Wt::WDate(2009, 10, 1),
-					  Wt::WTime(12, 11, 31));
+                                          Wt::WTime(12, 11, 31));
     a1.modify()->date = Wt::WDate(1980, 12, 4);
     a1.modify()->wstring = "Hello";
     a1.modify()->string = "There";
@@ -968,11 +968,11 @@ BOOST_AUTO_TEST_CASE( dbo_test4 )
       std::tie(b_result, a_result) = *i;
 
       if (ii == 0) {
-	BOOST_REQUIRE(a_result == a1);
-	BOOST_REQUIRE(b_result == b);
+        BOOST_REQUIRE(a_result == a1);
+        BOOST_REQUIRE(b_result == b);
       } else if (ii == 1) {
-	BOOST_REQUIRE(a_result == a2);
-	BOOST_REQUIRE(b_result == b);
+        BOOST_REQUIRE(a_result == a2);
+        BOOST_REQUIRE(b_result == b);
       }
 
       ++ii;
@@ -1236,7 +1236,7 @@ BOOST_AUTO_TEST_CASE( dbo_test5 )
 
     dbo::ptr<A> a1 = dbo::make_ptr<A>();
     a1.modify()->datetime = Wt::WDateTime(Wt::WDate(2009, 10, 1),
-					  Wt::WTime(12, 11, 31));
+                                          Wt::WTime(12, 11, 31));
     a1.modify()->date = Wt::WDate(1976, 11, 1);
     a1.modify()->wstring = "Hello";
     a1.modify()->string = "There";
@@ -1286,7 +1286,7 @@ BOOST_AUTO_TEST_CASE( dbo_test6 )
 
     dbo::ptr<A> a1 = dbo::make_ptr<A>();
     a1.modify()->datetime = Wt::WDateTime(Wt::WDate(2009, 10, 1),
-					  Wt::WTime(12, 11, 31));
+                                          Wt::WTime(12, 11, 31));
     a1.modify()->date = Wt::WDate(1980, 1, 1);
     a1.modify()->wstring = "Hello";
     a1.modify()->string = "There";
@@ -1343,7 +1343,7 @@ BOOST_AUTO_TEST_CASE( dbo_test7 )
 
     dbo::ptr<A> a1 = dbo::make_ptr<A>();
     a1.modify()->datetime = Wt::WDateTime(Wt::WDate(2009, 10, 1),
-					  Wt::WTime(12, 11, 31));
+                                          Wt::WTime(12, 11, 31));
     a1.modify()->date = Wt::WDate(1980, 1, 1);
     a1.modify()->wstring = "Hello";
     a1.modify()->string = "There";
@@ -1425,7 +1425,7 @@ BOOST_AUTO_TEST_CASE( dbo_test10 )
     dbo::ptr<D> d = dbo::make_ptr<D>();
 
     BOOST_REQUIRE(Wt::asString(Wt::cpp17::any(Coordinate(10, 4)))
-		  == "(10, 4)");
+                  == "(10, 4)");
 
     d.modify()->id = Coordinate(42, 43);
     d.modify()->name = "Object @ (42, 43)";
@@ -1506,7 +1506,7 @@ BOOST_AUTO_TEST_CASE( dbo_test10 )
     bool caught = false;
     try {
       std::cerr << "The test was - check that we fail gracefully when inserting "
-	"an object with a duplicate ID (search try{)."<< std::endl;
+        "an object with a duplicate ID (search try{)."<< std::endl;
       t.commit();
     } catch (std::exception& e) {
       std::cerr << "Catching exception: " << e.what() << std::endl;
@@ -1709,9 +1709,9 @@ BOOST_AUTO_TEST_CASE( dbo_test13 )
     {
       dbo::collection<dbo::ptr<B>> c;
       c = session_->query<dbo::ptr<B>>
-	("select B from " SCHEMA "\"table_b\" B ")
-	.where("B.\"state\" = ?").orderBy("B.\"name\"")
-	.limit(1).bind(0);
+        ("select B from " SCHEMA "\"table_b\" B ")
+        .where("B.\"state\" = ?").orderBy("B.\"name\"")
+        .limit(1).bind(0);
 
       BOOST_REQUIRE(c.size() == 1);
     }
@@ -1800,8 +1800,8 @@ BOOST_AUTO_TEST_CASE( dbo_test15 )
 
     {
       dbo::collection<dbo::ptr<A>> c = session_->query<dbo::ptr<A>>
-	("select A from " SCHEMA "\"table_a\" A ")
-	.where("\"b_id\" = ?").bind(b);
+        ("select A from " SCHEMA "\"table_a\" A ")
+        .where("\"b_id\" = ?").bind(b);
 
       BOOST_REQUIRE(c.size() == 1);
     }
@@ -1873,7 +1873,7 @@ BOOST_AUTO_TEST_CASE( dbo_test16 )
 
       std::vector<unsigned char> bin;
       for (unsigned i = 0; i < 255; ++i)
-	bin.push_back(255 - i);
+        bin.push_back(255 - i);
       Wt::WString ws("Hey");
       std::string s("Test");
       std::tm timeInfo = std::tm();
@@ -2053,8 +2053,8 @@ BOOST_AUTO_TEST_CASE( dbo_test21 )
 
     dbo::QueryModel<std::string> *model = new dbo::QueryModel<std::string>();
     model->setQuery(session_->query<std::string>
-		    ("SELECT cast(round(number, 2) as text) AS column_number "
-		     "FROM table"));
+                    ("SELECT cast(round(number, 2) as text) AS column_number "
+                     "FROM table"));
 
     model->addColumn("column_number", "label");
 
@@ -2447,7 +2447,7 @@ BOOST_AUTO_TEST_CASE( dbo_test25 )
       virtual std::string createOrderBy(int column, Wt::SortOrder order) override
       {
         std::string dir 
-	  = (order == Wt::SortOrder::Ascending ? "asc" : "desc");
+         = (order == Wt::SortOrder::Ascending ? "asc" : "desc");
         return "\"" + fieldInfo(column).name() + "\" " + dir +
           ((column != 3) ? ", \"last_name\"" : "") +
           ((column != 2) ? ", \"first_name\"" : "");
@@ -2528,11 +2528,11 @@ struct CheckExpected : Wt::WObject {
       dbo::Transaction t2(*session2_);
       dbo::ptr<F> c = session2_->find<F>();
       if (c->firstName != expected)
-	BOOST_ERROR(std::string("CheckExpected: firstName != expected, firstName: '") +
-		    c->firstName + "', expected: '" + expected + "'");
+        BOOST_ERROR(std::string("CheckExpected: firstName != expected, firstName: '") +
+                    c->firstName + "', expected: '" + expected + "'");
       else
-	BOOST_TEST_MESSAGE(std::string("CheckExpected OK: firstName: '") +
-			   c->firstName + "', expected: '" + expected + "'");
+        BOOST_TEST_MESSAGE(std::string("CheckExpected OK: firstName: '") +
+                           c->firstName + "', expected: '" + expected + "'");
     }
     return true;
   }
@@ -3024,6 +3024,41 @@ BOOST_AUTO_TEST_CASE( dbo_test36 )
   }
 }
 
+BOOST_AUTO_TEST_CASE( dbo_test36b )
+{
+  // Test reentrant statement use with parameters
+  // cfr. issue #10348
+  DboFixture f;
+  dbo::Session *session_ = f.session_;
+
+  {
+    dbo::Transaction t(*session_);
+    auto a = session_->addNew<A>();
+    a.modify()->i = 1;
+    t.commit();
+  }
+
+  {
+    dbo::Transaction t(*session_);
+    auto results1 = session_->find<A>().where("\"i\" = ?").bind(1).resultList();
+    auto begin1 = results1.begin();
+    BOOST_REQUIRE((*begin1)->i == 1);
+    // Concurrent use of statement. Up until Wt 4.7.2 this would create a copy
+    // in SqlConnection::getStatement, and another one in Session::getStatement(const char *, int),
+    // or Session::getOrPrepareStatement(const std::string &).
+    // The last copy would be the one that's actually used.
+    auto results2 = session_->find<A>().where("\"i\" = ?").bind(1).resultList();
+    auto begin2 = results2.begin();
+    BOOST_REQUIRE((*begin2)->i == 1);
+    // This would use the extra statement we created before. The first copy would use SqlStatement::sql(), which
+    // for PostgreSQL already has question marks replaced with $1, $2, etc. This causes paramCount_ to be off
+    // and will result in a "Binding too many parameters" exception.
+    auto results3 = session_->find<A>().where("\"i\" = ?").bind(1).resultList();
+    auto begin3 = results3.begin();
+    BOOST_REQUIRE((*begin3)->i == 1);
+  }
+}
+
 // Test Boost optional
 BOOST_AUTO_TEST_CASE( dbo_test37 )
 {
@@ -3377,6 +3412,108 @@ BOOST_AUTO_TEST_CASE( dbo_test45 )
     auto a = f.session_->find<A>().resultValue();
     BOOST_REQUIRE_CLOSE_FRACTION(a->f, fl, 1E-7);
     BOOST_REQUIRE_CLOSE_FRACTION(a->d, dbl, 1E-15);
+  }
+}
+
+BOOST_AUTO_TEST_CASE( dbo_test46 )
+{
+  // Test join functions
+  DboFixture f;
+  dbo::Session &session = *f.session_;
+
+  {
+    dbo::Transaction t(session);
+
+    dbo::ptr<A> a = session.addNew<A>();
+    a.modify()->i = 1;
+    dbo::ptr<A> a2 = session.addNew<A>();
+    a2.modify()->i = 2;
+    dbo::ptr<B> b = session.addNew<B>();
+    b.modify()->name = "Test";
+    dbo::ptr<B> b2 = session.addNew<B>();
+    b2.modify()->name = "Test2";
+
+    a.modify()->b = b;
+  }
+
+  using ResultType = std::tuple< dbo::ptr<A>, dbo::ptr<B> >;
+  {
+    dbo::Transaction t(session);
+
+    dbo::collection<ResultType> results = session.query<ResultType>("select a, b from \"table_a\" a")
+      .join<B>("b", "a.b_id = b.id");
+
+    BOOST_REQUIRE(results.size() == 1);
+
+    auto it = results.begin();
+
+    dbo::ptr<A> resultA = std::get<0>(*it);
+    BOOST_REQUIRE(resultA);
+    BOOST_REQUIRE(resultA->i == 1);
+    dbo::ptr<B> resultB = std::get<1>(*it);
+    BOOST_REQUIRE(resultB);
+    BOOST_REQUIRE(resultB->name == "Test");
+  }
+
+  {
+    dbo::Transaction t(session);
+
+    dbo::collection<ResultType> results = session.query<ResultType>("select a, b from \"table_a\" a")
+      .leftJoin<B>("b", "a.b_id = b.id")
+      .orderBy("a.id");
+
+    BOOST_REQUIRE(results.size() == 2);
+
+    auto it = results.begin();
+    BOOST_REQUIRE(std::get<0>(*it));
+    BOOST_REQUIRE(std::get<1>(*it));
+    it++;
+    BOOST_REQUIRE(std::get<0>(*it));
+    BOOST_REQUIRE(!std::get<1>(*it));
+
+#ifndef SQLITE3 // no support for right join
+    dbo::collection<ResultType> results2 = session.query<ResultType>("select a, b from \"table_a\" a")
+      .rightJoin<B>("b", "a.b_id = b.id")
+      .orderBy("b.id");
+
+    BOOST_REQUIRE(results2.size() == 2);
+
+    auto it2 = results2.begin();
+    BOOST_REQUIRE(std::get<0>(*it2));
+    BOOST_REQUIRE(std::get<1>(*it2));
+    it2++;
+    BOOST_REQUIRE(!std::get<0>(*it2));
+    BOOST_REQUIRE(std::get<1>(*it2));
+#endif
+  }
+}
+
+BOOST_AUTO_TEST_CASE( dbo_test47 )
+{
+  // Test Query self-assignment
+  DboFixture f;
+  dbo::Session &session = *f.session_;
+
+  {
+    dbo::Transaction t(session);
+    auto a1 = session.addNew<A>();
+    a1.modify()->i = 3;
+    auto a2 = session.addNew<A>();
+    a2.modify()->i = 4;
+    auto a3 = session.addNew<A>();
+    a3.modify()->i = 5;
+  }
+
+  {
+    dbo::Transaction t(session);
+    auto query = session.find<A>().where("i < ?").bind(5);
+    BOOST_REQUIRE(query.resultList().size() == 2);
+
+    // do self-assignment
+    query = query;
+
+    // 5 should still be bound, so we should still get 2 results
+    BOOST_REQUIRE(query.resultList().size() == 2);
   }
 }
 

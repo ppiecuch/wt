@@ -13,9 +13,14 @@
 constexpr unsigned int MAX_CONTENT_LENGTH = 200;
 
 enum err_code {
-  content_length_exceeded = 0,
-  device_already_exists,
+  no_error = 0,
+  content_length_exceeded,
+  missing_json_content,
+  malformed_json_content,
+  missing_autorization_token,
   invalid_credentials,
+  device_already_exists,
+  user_already_exists,
   bad_ranking_request,
   bad_user_request,
   unknown_request,

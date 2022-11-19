@@ -6,48 +6,49 @@
 
 /* Note: this is at the same time valid JavaScript and C++. */
 
-WT_DECLARE_WT_MEMBER
-(1, JavaScriptConstructor, "WTreeTable",
- function(APP, table) {
-   table.wtObj = this;
+WT_DECLARE_WT_MEMBER(1, JavaScriptConstructor, "WTreeTable", function(APP, table) {
+  table.wtObj = this;
 
-   var self = this, WT = APP.WT;
+  const self = this, WT = APP.WT;
+  const content = table.querySelector(".Wt-content"),
+    spacer = table.querySelector(".Wt-sbspacer");
 
-   var content = $(table).find('.Wt-content').get(0),
-       spacer = $(table).find('.Wt-sbspacer').get(0);
+  this.wtResize = function(el, w, h, setSize) {
+    const hdefined = h >= 0;
 
-   this.wtResize = function(el, w, h, setSize) {
-     var hdefined = h >= 0;
+    if (setSize) {
+      if (hdefined) {
+        el.style.height = h + "px";
+      } else {
+        el.style.height = "";
+      }
+    }
 
-     if (setSize) {
-     	if (hdefined)
-	  el.style.height = h + 'px';
-	else
-	  el.style.height = '';
-     }
+    const c = el.lastChild;
+    const t = el.firstChild;
+    h -= t.getBoundingClientRect().height;
 
-     var c = el.lastChild;
-     var t = el.firstChild;
-     h -= $(t).outerHeight();
+    if (hdefined && h > 0) {
+      if (c.style.height !== h + "px") {
+        c.style.height = h + "px";
+      }
+    } else {
+      c.style.height = "";
+    }
+  };
 
-     if (hdefined && h > 0) {
-       if (c.style.height != h + 'px')
-	 c.style.height = h + 'px';
-     } else
-       c.style.height = '';
-   };
+  this.autoJavaScript = function() {
+    if (table.parentNode) {
+      if (content.scrollHeight > content.offsetHeight) {
+        spacer.style.display = "block";
+      } else {
+        spacer.style.display = "none";
+      }
 
-   this.autoJavaScript = function() {
-     if (table.parentNode) {
-       if (content.scrollHeight > content.offsetHeight) {
-         spacer.style.display='block';
-       } else {
-         spacer.style.display='none';
-       }
-
-       var h = WT.pxself(table, 'height');
-       if (h)
-	 self.wtResize(table, 0, h, false);
-     }
-   };
- });
+      const h = WT.pxself(table, "height");
+      if (h) {
+        self.wtResize(table, 0, h, false);
+      }
+    }
+  };
+});

@@ -1,3 +1,5 @@
+#!/usr/bin/env groovy
+
 def user_id
 def user_name
 def group_id
@@ -5,7 +7,7 @@ def group_name
 def container_ccache_dir
 def host_ccache_dir
 
-def thread_count = 5
+def thread_count = 10
 
 node('wt') {
     user_id = sh(returnStdout: true, script: 'id -u').trim()
@@ -48,12 +50,12 @@ pipeline {
     }
     options {
         buildDiscarder logRotator(numToKeepStr: '20')
-        disableConcurrentBuilds()
+        disableConcurrentBuilds abortPrevious: true
     }
     agent {
         dockerfile {
             label 'wt'
-            dir 'jenkins'
+            dir 'jenkins/linux'
             filename 'full.Dockerfile'
             args "--env CCACHE_DIR=${container_ccache_dir} --env CCACHE_MAXSIZE=20G --volume ${host_ccache_dir}:${container_ccache_dir}:z"
             additionalBuildArgs """--build-arg USER_ID=${user_id} \
@@ -67,7 +69,7 @@ pipeline {
         pollSCM('@midnight')
     }
     stages {
-        stage('Multithreaded, wthttp') {
+        stage('Multi-threaded, wthttp') {
             steps {
                 dir('build-mt-http') {
                     wt_configure(mt: 'ON', examplesConnector: 'wthttp')
@@ -82,7 +84,7 @@ pipeline {
                 }
             }
         }
-        stage('Non-multithreaded, wthttp') {
+        stage('Single-threaded, wthttp') {
             steps {
                 dir('build-st-http') {
                     wt_configure(mt: 'OFF', examplesConnector: 'wthttp')
@@ -90,14 +92,14 @@ pipeline {
                     sh "make -C examples -k -j${thread_count}"
                 }
                 dir('test') {
-                    warnError('non-mt wthttp test.wt failed') {
+                    warnError('st wthttp test.wt failed') {
                         sh "../build-st-http/test/test.wt --log_format=JUNIT --log_level=all --log_sink=${env.WORKSPACE}/st_wthttp_test_log.xml"
 
                     }
                 }
             }
         }
-        stage('Multithreaded, wtfcgi') {
+        stage('Multi-threaded, wtfcgi') {
             steps {
                 dir('build-mt-fcgi') {
                     wt_configure(mt: 'ON', examplesConnector: 'wtfcgi')
@@ -112,7 +114,7 @@ pipeline {
                 }
             }
         }
-        stage('Non-multithreaded, wtfcgi') {
+        stage('Single-threaded, wtfcgi') {
             steps {
                 dir('build-st-fcgi') {
                     wt_configure(mt: 'OFF', examplesConnector: 'wtfcgi')
@@ -120,7 +122,7 @@ pipeline {
                     sh "make -C examples -k -j${thread_count}"
                 }
                 dir('test') {
-                    warnError('non-mt wtfcgi test.wt failed') {
+                    warnError('st wtfcgi test.wt failed') {
                         sh "../build-st-fcgi/test/test.wt --log_format=JUNIT --log_level=all --log_sink=${env.WORKSPACE}/st_wtfcgi_test_log.xml"
 
                     }

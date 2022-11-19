@@ -41,7 +41,7 @@
   #if defined(WTHTTP_STATIC) || defined(WTISAPI_STATIC)
     // WTISAPI_STATIC is defined when building WTISAPI,
     // when using ISAPI, the user should also define WTISAPI_STATIC
-    #define WTCONNECTOR_API 
+    #define WTCONNECTOR_API
   #else
     #define WTCONNECTOR_API WT_IMPORT
   #endif
@@ -73,19 +73,11 @@ typedef unsigned __int32 uint32_t;  /* 32 bit unsigned */
 #include <stdint.h>
 #endif // _MSC_VER
 
+// Since Wt 4.5.0 we require C++14, so these are always defined
 #ifndef WT_CXX14
-
-#if __cplusplus >= 201402L || _MSVC_LANG >= 201402L
 #define WT_CXX14
-#endif
-
-#ifdef WT_CXX14
 #define WT_CXX14ONLY(x) x
-#else
-#define WT_CXX14ONLY(x)
 #endif
-
-#endif // end outer ifndef WT_CXX14
 
 #ifndef WT_CXX17
 
@@ -100,5 +92,14 @@ typedef unsigned __int32 uint32_t;  /* 32 bit unsigned */
 #endif
 
 #endif // end outer ifndef WT_CXX17
+
+#ifndef WT_DEPRECATED
+#if defined(WT_BUILDING) || defined(WT_CNOR)
+// Don't warn about internal use of deprecated APIs
+#define WT_DEPRECATED(details)
+#else
+#define WT_DEPRECATED(details) [[deprecated(details)]]
+#endif
+#endif
 
 #endif // DLLDEFS_H_

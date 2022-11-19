@@ -72,7 +72,7 @@ WResource::WResource()
     dispositionType_(ContentDisposition::None),
     version_(0),
     app_(nullptr)
-{ 
+{
 #ifdef WT_THREADED
   mutex_.reset(new std::recursive_mutex());
   beingDeleted_ = false;
@@ -180,7 +180,7 @@ WResource::addContinuation(Http::ResponseContinuation *c)
 }
 
 void WResource::handle(WebRequest *webRequest, WebResponse *webResponse,
-		       Http::ResponseContinuationPtr continuation)
+                       Http::ResponseContinuationPtr continuation)
 {
   /*
    * If we are a new request for a dynamic resource, then we will have
@@ -209,8 +209,8 @@ void WResource::handle(WebRequest *webRequest, WebResponse *webResponse,
       return;
 
     if (!takesUpdateLock() &&
-        handler->haveLock() && 
-	handler->lockOwner() == std::this_thread::get_id()) {
+        handler->haveLock() &&
+        handler->lockOwner() == std::this_thread::get_id()) {
       handler->unlock();
     }
   }
@@ -227,7 +227,18 @@ void WResource::handle(WebRequest *webRequest, WebResponse *webResponse,
   if (!continuation)
     response.setStatus(200);
 
-  handleRequest(request, response);
+  try {
+    handleRequest(request, response);
+  } catch (std::exception& e) {
+    LOG_ERROR("Uncaught exception from handleRequest (aborting request): " << e.what());
+    // If the status was not already sent, set it to 500 Internal Server Error
+    response.setStatus(500);
+    if (response.continuation_) {
+      // We always abort when an exception is thrown from handleRequest,
+      // so any continuation is removed.
+      removeContinuation(response.continuation_);
+    }
+  }
 
 #ifdef WT_THREADED
   updateLock.reset();
@@ -244,8 +255,8 @@ void WResource::handle(WebRequest *webRequest, WebResponse *webResponse,
     webResponse->flush
       (WebResponse::ResponseState::ResponseFlush,
        std::bind(&Http::ResponseContinuation::readyToContinue,
-		 response.continuation_,
-		 std::placeholders::_1));
+                 response.continuation_,
+                 std::placeholders::_1));
   }
 }
 
@@ -317,7 +328,7 @@ const std::string& WResource::generateUrl()
     currentUrl_ = app->addExposedResource(this);
     app_ = app;
     if (c)
-      c->addUploadProgressUrl(currentUrl_);    
+      c->addUploadProgressUrl(currentUrl_);
   } else
     currentUrl_ = internalPath_;
 
@@ -325,8 +336,8 @@ const std::string& WResource::generateUrl()
 }
 
 void WResource::write(WT_BOSTREAM& out,
-		      const Http::ParameterMap& parameters,
-		      const Http::UploadedFileMap& files)
+                      const Http::ParameterMap& parameters,
+                      const Http::UploadedFileMap& files)
 {
   Http::Request  request(parameters, files);
   Http::Response response(this, out);
@@ -334,7 +345,7 @@ void WResource::write(WT_BOSTREAM& out,
   handleRequest(request, response);
 
   // While the resource indicates more data to be sent, get it too.
-  while (response.continuation_	&& response.continuation_->resource_) {
+  while (response.continuation_ && response.continuation_->resource_) {
     response.continuation_->resource_ = nullptr;
     request.continuation_ = response.continuation_.get();
 

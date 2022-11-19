@@ -35,11 +35,8 @@ class WTransform;
  * On Linux, the rendering is provided by <a
  * href="http://www.graphicsmagick.org/">GraphicsMagick</a>, and this
  * class is included in the library only if <tt>libgraphicsmagick</tt>
- * was found during the build of the library. As an alternative, Wt
- * supports certain versions of <a href="https://skia.org/">skia</a>. In
- * general skia is a good and performant renderer, but since it does not
- * have releases, and a not very stable API, we don't recommend it. On
- * Windows, Direct2D is used for rendering, which means that no extra
+ * was found during the build of the library.
+ * On Windows, Direct2D is used for rendering, which means that no extra
  * dependencies have to be installed.
  *
  * If %Wt is built to use <tt>libpango</tt> for font support, then text
@@ -66,14 +63,14 @@ class WTransform;
  *
  * This paint device has the following limitations:
  * - drop shadows are (not yet?) supported.
- * 
+ *
  * \ingroup painting
  */
 class WT_API WRasterImage : public WResource, public WPaintDevice
 {
 public:
   /*! \brief Creates a raster image.
-   * 
+   *
    * \p type indicates an image type. The mime type of the resource is
    * <tt>"image/"</tt> \p type.
    *
@@ -84,7 +81,7 @@ public:
    * - jpeg: Joint Photographic Experts Group JFIF format
    */
   WRasterImage(const std::string& type,
-	       const WLength& width, const WLength& height);
+               const WLength& width, const WLength& height);
 
   /*! \brief Destructor.
    */
@@ -96,7 +93,7 @@ public:
    * matching and character selection is done by libpango, which is
    * seeded with information on installed fonts by fontconfig. In that
    * case, invocations for this method is ignored.
-   * 
+   *
    * If %Wt has not been configured to use <tt>libpango</tt>, then
    * this method may be used to indicate the location of true type
    * fonts. The main drawback compared to libpango is that font
@@ -111,21 +108,21 @@ public:
   virtual WFlags<PaintDeviceFeatureFlag> features() const override;
   virtual void setChanged(WFlags<PainterChangeFlag> flags) override;
   virtual void drawArc(const WRectF& rect, double startAngle,
-		       double spanAngle) override;
+                       double spanAngle) override;
   virtual void drawImage(const WRectF& rect, const std::string& imgUri,
-			 int imgWidth, int imgHeight,
-			 const WRectF& sourceRect) override;
+                         int imgWidth, int imgHeight,
+                         const WRectF& sourceRect) override;
   virtual void drawLine(double x1, double y1, double x2, double y2) override;
   virtual void drawRect(const WRectF& rect) override;
   virtual void drawPath(const WPainterPath& path) override;
 
-  virtual void drawText(const WRectF& rect, 
-			WFlags<AlignmentFlag> alignmentFlags,
-			TextFlag textFlag,
-			const WString& text,
-			const WPointF *clipPoint) override;
+  virtual void drawText(const WRectF& rect,
+                        WFlags<AlignmentFlag> alignmentFlags,
+                        TextFlag textFlag,
+                        const WString& text,
+                        const WPointF *clipPoint) override;
   virtual WTextItem measureText(const WString& text, double maxWidth = -1,
-				bool wordWrap = false) override;
+                                bool wordWrap = false) override;
   virtual WFontMetrics fontMetrics() override;
   virtual void init() override;
   virtual void done() override;
@@ -135,7 +132,7 @@ public:
   virtual WLength height() const override { return height_; }
 
   virtual void handleRequest(const Http::Request& request,
-			     Http::Response& response) override;
+                             Http::Response& response) override;
 
   /*! \brief Low-level paint method.
    *

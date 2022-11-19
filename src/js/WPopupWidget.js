@@ -6,147 +6,167 @@
 
 /* Note: this is at the same time valid JavaScript and C++. */
 
-WT_DECLARE_WT_MEMBER
-(1, JavaScriptConstructor, "WPopupWidget",
- function(APP, el, tr, ahd, shown) {
-   el.wtPopup = this;
+WT_DECLARE_WT_MEMBER(1, JavaScriptConstructor, "WPopupWidget", function(APP, el, tr, ahd, shown) {
+  el.wtPopup = this;
 
-   var self = this,
-       WT = APP.WT,
-       hideTimeout = null,
-       isTransient = tr,
-       autoHideDelay = ahd,
-       touch = null,
-       showF = null, hideF = null;
+  const self = this,
+    WT = APP.WT;
+  let hideTimeout = null,
+    isTransient = tr,
+    autoHideDelay = ahd,
+    touch = null,
+    showF = null,
+    hideF = null;
 
-   function bindDocumentClick() {
-     if (WT.isIOS) {
-       $(document).bind('touchstart', startTouch);
-       $(document).bind('touchend', endTouch);
-     } else
-       $(document).bind('click', onDocumentClick);
-   }
+  function bindDocumentClick() {
+    if (WT.isIOS) {
+      document.addEventListener("touchstart", startTouch);
+      document.addEventListener("touchend", endTouch);
+    } else {
+      document.addEventListener("click", onDocumentClick);
+    }
+  }
 
-   function unbindDocumentClick() {
-     if (WT.isIOS) {
-       $(document).unbind('touchstart', startTouch);
-       $(document).unbind('touchend', endTouch);
-     } else
-       $(document).unbind('click', onDocumentClick);
-   }
+  function unbindDocumentClick() {
+    if (WT.isIOS) {
+      document.removeEventListener("touchstart", startTouch);
+      document.removeEventListener("touchend", endTouch);
+    } else {
+      document.removeEventListener("click", onDocumentClick);
+    }
+  }
 
-   function startTouch(event) {
-     var l = event.originalEvent.touches;
-     if (l.length > 1)
-       touch = null;
-     else {
-       touch = {
-         x: l[0].screenX,
-         y: l[0].screenY
-       }
-     }
-   }
+  function startTouch(event) {
+    const l = event.originalEvent.touches;
+    if (l.length > 1) {
+      touch = null;
+    } else {
+      touch = {
+        x: l[0].screenX,
+        y: l[0].screenY,
+      };
+    }
+  }
 
-   function endTouch(event) {
-     if (touch) {
-       var t = event.originalEvent.changedTouches[0];
-       if (Math.abs(touch.x - t.screenX) < 20 && Math.abs(touch.y - t.screenY) < 20)
-         onDocumentClick(event);
-     }
-   }
+  function endTouch(event) {
+    if (touch) {
+      const t = event.originalEvent.changedTouches[0];
+      if (Math.abs(touch.x - t.screenX) < 20 && Math.abs(touch.y - t.screenY) < 20) {
+        onDocumentClick(event);
+      }
+    }
+  }
 
-   function mouseLeave() {
-     clearTimeout(hideTimeout);
-     if (autoHideDelay > 0)
-       hideTimeout = setTimeout(function() { self.hide(); }, autoHideDelay);
-   }
+  function mouseLeave() {
+    clearTimeout(hideTimeout);
+    if (autoHideDelay > 0) {
+      hideTimeout = setTimeout(function() {
+        self.hide();
+      }, autoHideDelay);
+    }
+  }
 
-   function mouseEnter() {
-     clearTimeout(hideTimeout);
-   }
+  function mouseEnter() {
+    clearTimeout(hideTimeout);
+  }
 
-   function isHidden() {
-     return el.style.display == 'hidden';
-   }
+  function isHidden() {
+    return el.style.display === "hidden";
+  }
 
-   function onDocumentClick(event) {
-     function isAncestor(a, b) {
-       if (a == b)
-	 return true;
+  function onDocumentClick(event) {
+    function isAncestor(a, b) {
+      if (a === b) {
+        return true;
+      }
 
-       for (b = b.parentNode; b; b = b.parentNode)
-	 if (a == b)
-	   return true;
-      
-       return false;
-     }
+      for (b = b.parentNode; b; b = b.parentNode) {
+        if (a === b) {
+          return true;
+        }
+      }
 
-     var target = WT.target(event);
-     if (target == document)
-       if (WT.WPopupWidget.popupClicked !== null)
-	 target = WT.WPopupWidget.popupClicked;
+      return false;
+    }
 
-     if (!isAncestor(el, target))
-       self.hide();
-   }
+    let target = WT.target(event);
+    if (target === document) {
+      if (WT.WPopupWidget.popupClicked !== null) {
+        target = WT.WPopupWidget.popupClicked;
+      }
+    }
 
-   this.bindShow = function(f) {
-     showF = f;
-   };
+    if (!isAncestor(el, target)) {
+      self.hide();
+    }
+  }
 
-   this.bindHide = function(f) {
-     hideF = f;
-   };
+  this.bindShow = function(f) {
+    showF = f;
+  };
 
-   this.shown = function(f) {
-     if (isTransient) {
-       setTimeout(function() {
- 		    bindDocumentClick();
-		  }, 0);
-     }
+  this.bindHide = function(f) {
+    hideF = f;
+  };
 
-     if (showF) showF();
-   };
+  this.shown = function() {
+    if (isTransient) {
+      setTimeout(function() {
+        bindDocumentClick();
+      }, 0);
+    }
 
-   this.show = function(anchorWidget, side) {
-     if (el.style.display != '') {
-       el.style.display = '';
+    if (showF) {
+      showF();
+    }
+  };
 
-       if (anchorWidget)
-	 WT.positionAtWidget(el.id, anchorWidget.id, side);
+  this.show = function(anchorWidget, side) {
+    if (el.style.display !== "") {
+      el.style.display = "";
 
-       APP.emit(el, "shown");
-     }
-   };
+      if (anchorWidget) {
+        WT.positionAtWidget(el.id, anchorWidget.id, side);
+      }
 
-   this.hidden = function() {
-     if (hideF) hideF();
+      APP.emit(el, "shown");
+    }
+  };
 
-     if (isTransient)
-       unbindDocumentClick();
-   };
+  this.hidden = function() {
+    if (hideF) {
+      hideF();
+    }
 
-   this.hide = function() {
-     if (el.style.display != 'none') {
-       el.style.display = 'none';
-     }
+    if (isTransient) {
+      unbindDocumentClick();
+    }
+  };
 
-     APP.emit(el, "hidden");
-     self.hidden();
-   };
+  this.hide = function() {
+    if (el.style.display !== "none") {
+      el.style.display = "none";
+    }
 
-   this.setTransient = function(t, delay) {
-     isTransient = t;
-     autoHideDelay = delay;
+    APP.emit(el, "hidden");
+    self.hidden();
+  };
 
-     if (isTransient && !isHidden())
-       setTimeout(function() {
-		    bindDocumentClick();
-		  }, 0);
-   };
+  this.setTransient = function(t, delay) {
+    isTransient = t;
+    autoHideDelay = delay;
 
-   $(el).mouseleave(mouseLeave).mouseenter(mouseEnter);
+    if (isTransient && !isHidden()) {
+      setTimeout(function() {
+        bindDocumentClick();
+      }, 0);
+    }
+  };
 
-   if (shown)
-     this.shown();
- });
+  el.addEventListener("mouseleave", mouseLeave);
+  el.addEventListener("mouseenter", mouseEnter);
+
+  if (shown) {
+    this.shown();
+  }
+});

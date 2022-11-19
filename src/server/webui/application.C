@@ -34,6 +34,8 @@ using namespace Wt;
 #include <functional>
 #include <iostream>
 
+#include <boost/filesystem.hpp>
+
 GameServerApplication::GameServerApplication(const WEnvironment& env)
   : WApplication(env)
   , user(""), pass("")
@@ -228,13 +230,17 @@ int app_landing(int argc, char **argv) {
 
       Session::configureAuth();
 
-      std::unique_ptr<Dbo::SqlConnectionPool> db = Session::createConnectionPool();
+      std::string _connection_string;
+      std::unique_ptr<Dbo::SqlConnectionPool> db = Session::createConnectionPool(_connection_string);
 
       {
         Dbo::Session session;
         session.setConnectionPool(*db);
 
-        session.mapClass<User>("user");
+        session.mapClass<DeviceToken>("device_tokens");
+        session.mapClass<Device>("device");
+        session.mapClass<Team>("team");
+        session.mapClass<Player>("player");
         session.mapClass<AuthInfo>("auth_info");
         session.mapClass<AuthInfo::AuthIdentityType>("auth_identity");
         session.mapClass<AuthInfo::AuthTokenType>("auth_token");
@@ -244,13 +250,19 @@ int app_landing(int argc, char **argv) {
         session.mapClass<Rss>("rss");
 
         try {
-          session.createTables();
-          log("info") << "(Server) Database created";
-        } catch (Dbo::Exception& e) {
+          std::string dbfile = Session::getDatabaseFilename(_connection_string);
+          if (!dbfile.empty() && boost::filesystem::exists(dbfile) && boost::filesystem::file_size(dbfile) > 0) {
+            log("info") << "(Server) Database already exists: " << _connection_string << "(" << boost::filesystem::file_size(dbfile) << " bytes )";
+          } else {
+            session.createTables();
+            log("info") << "(Server) Database created";
+          }
+        } catch (Dbo::Exception &e) {
+          log("info") << "(Server) Database failed when initializing: " << _connection_string;
           report_exception(e.what());
           return 1;
-        } catch (...) {
-          log("info") << "(Server) Using existing database";
+        } catch (std::exception &e) {
+          log("info") << "(Server) Database initialization trigger unexpected exception " << e.what();
         }
       }
 
@@ -258,13 +270,38 @@ int app_landing(int argc, char **argv) {
       ApiServiceScore score(db.get());
       ApiServiceRanking ranking(db.get());
 
-      // GET /api/register/mysticmine/ios-xperia-1AC9D -> token (optional body: email address, display name)
+      // POST /api/device/register -> token (optional body: email address, display name)
+      // {
+      //   "device-name": "ios-xperia-1AC9D"
+      //   "team-id": "7A83"
+      // }
       //  result:
-      //   already registered
-      // GET /api/mysticmine/deregister -> remove token if exists
+      //    err: already registered
+      //    ok: token
+
+      // POST /api/device/rename -> token (optional body: email address, display name)
+
+      // POST /api/device/attach -> attach device to the player
+      // {
+      //   "player-id": "AB07"
+      // }
       //  result:
-      //    token not exists
-      //    token removed
+      //    err: player not found
+      //    ok: device attached
+
+      // POST /api/device/ping
+
+      // GET /api/device/status/ios-xperia-1AC9D -> token (optional body: email address, display name)
+      //  result:
+      //    status: already registered
+      //    status: unknown device
+
+      // POST /api/device/deregister/ios-xperia-1AC9D -> remove token if exists
+      //  Header:
+      //    Authentication: <token>
+      //  result:
+      //    err: token not exists
+      //    status: token removed
       // GET /api/mysticmine/retrive/<email> -> token send to registered email
 
       // GET /api/ranking/mysticmine/normal/global/10
@@ -273,6 +310,7 @@ int app_landing(int argc, char **argv) {
       //  Header:
       //    Authentication: <token>
 
+      server.addResource(&registering, "/api/device/${action}");
       server.addResource(&registering, "/api/register/${game}/${pin}");
       server.addResource(&score, "/api/score/${game}/${ranking}/${score}");
       // get $top items from $chart

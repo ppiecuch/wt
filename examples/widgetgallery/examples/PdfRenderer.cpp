@@ -6,12 +6,14 @@
 #include <Wt/WApplication.h>
 
 #include <hpdf.h>
+#include <hpdf_version.h>
 
 namespace {
-    void HPDF_STDCALL error_handler(HPDF_STATUS error_no, HPDF_STATUS detail_no,
-		       void *user_data) {
-	fprintf(stderr, "libharu error: error_no=%04X, detail_no=%d\n",
-		(unsigned int) error_no, (int) detail_no);
+    void HPDF_STDCALL error_handler(HPDF_STATUS error_no,
+                                    HPDF_STATUS detail_no,
+                                    void *user_data) {
+        auto pdfImage = static_cast<Wt::WPdfImage*>(user_data);
+        pdfImage->errorHandler(error_no, detail_no);
     }
 }
 
@@ -21,35 +23,35 @@ public:
     ReportResource()
         : WResource()
     {
-	suggestFileName("report.pdf");
+        suggestFileName("report.pdf");
     }
 
     virtual ~ReportResource()
     {
-	beingDeleted();
+        beingDeleted();
     }
 
     virtual void handleRequest(const Wt::Http::Request& request,
                                Wt::Http::Response& response)
     {
-	response.setMimeType("application/pdf");
+        response.setMimeType("application/pdf");
 
-	HPDF_Doc pdf = HPDF_New(error_handler, 0);
+        HPDF_Doc pdf = HPDF_New(error_handler, 0);
 
-#if HPDF_MAJOR_VERION >= 2 || HPDF_MINOR_VERSION >= 3
-	// Note: UTF-8 encoding (for TrueType fonts) is only available since libharu 2.3.0 !
-	HPDF_UseUTFEncodings(pdf);
+#if HPDF_VERSION_ID >= 20300
+        // Note: UTF-8 encoding (for TrueType fonts) is only available since libharu 2.3.0 !
+        HPDF_UseUTFEncodings(pdf);
 #endif
 
-	renderReport(pdf);
+        renderReport(pdf);
 
-	HPDF_SaveToStream(pdf);
-	unsigned int size = HPDF_GetStreamSize(pdf);
-	HPDF_BYTE *buf = new HPDF_BYTE[size];
-	HPDF_ReadFromStream (pdf, buf, &size);
-	HPDF_Free(pdf);
-	response.out().write((char*)buf, size);
-	delete[] buf;
+        HPDF_SaveToStream(pdf);
+        unsigned int size = HPDF_GetStreamSize(pdf);
+        HPDF_BYTE *buf = new HPDF_BYTE[size];
+        HPDF_ReadFromStream (pdf, buf, &size);
+        HPDF_Free(pdf);
+        response.out().write((char*)buf, size);
+        delete[] buf;
     }
 
 private:
@@ -59,13 +61,13 @@ private:
 
     void renderPdf(const Wt::WString& html, HPDF_Doc pdf)
     {
-	HPDF_Page page = HPDF_AddPage(pdf);
-	HPDF_Page_SetSize(page, HPDF_PAGE_SIZE_A4, HPDF_PAGE_PORTRAIT);
+        HPDF_Page page = HPDF_AddPage(pdf);
+        HPDF_Page_SetSize(page, HPDF_PAGE_SIZE_A4, HPDF_PAGE_PORTRAIT);
 
-	Wt::Render::WPdfRenderer renderer(pdf, page);
-	renderer.setMargin(2.54);
-	renderer.setDpi(96);
-	renderer.render(html);
+        Wt::Render::WPdfRenderer renderer(pdf, page);
+        renderer.setMargin(2.54);
+        renderer.setDpi(96);
+        renderer.render(html);
     }
 };
 

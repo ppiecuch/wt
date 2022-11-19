@@ -32,7 +32,7 @@ PROJECT_NAME           = Wt
 # This could be handy for archiving the generated documentation or
 # if some version control system is used.
 
-PROJECT_NUMBER         = 4.7.0
+PROJECT_NUMBER         = 4.8.2
 
 # Using the PROJECT_BRIEF tag one can provide an optional one line description
 # for a project that appears at the top of each page and should give viewer
@@ -1544,7 +1544,8 @@ PREDEFINED             = DOXYGEN_ONLY \
                          WT_UCHAR=std::string \
                          WT_BOSTREAM=std::ostream \
                          WT_BAOSTREAM=std::ostringstream \
-                         WT_ARRAY=
+                         WT_ARRAY= \
+                         WT_DEPRECATED(...)=
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then
 # this tag can be used to specify a list of macro names that should be expanded.
