@@ -5,6 +5,9 @@
  */
 #include <cstdio>
 #include <sstream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
 
 #include "Wt/WObject.h"
 #include "Wt/WApplication.h"
@@ -42,7 +45,9 @@ std::string elementNames_[] =
 
     "audio", "video", "source",
 
-    "b", "strong", "em", "i", "hr"
+    "b", "strong", "em", "i", "hr",
+
+    "datalist"
   };
 
 bool defaultInline_[] =
@@ -67,76 +72,172 @@ bool defaultInline_[] =
 
     false, false, false,
 
-    true, true, true, true, false
+    true, true, true, true, false,
+
+    false
   };
 
-std::string cssNames_[] =
-  { "position",
-    "z-index", "float", "clear",
-    "width", "height", "line-height",
-    "min-width", "min-height",
-    "max-width", "max-height",
-    "left", "right", "top", "bottom",
-    "vertical-align", "text-align",
-    "padding",
-    "padding-top", "padding-right",
-    "padding-bottom", "padding-left",
-    "margin",
-    "margin-top", "margin-right",
-    "margin-bottom", "margin-left", "cursor",
-    "border-top", "border-right",
-    "border-bottom", "border-left",
-    "border-color-top", "border-color-right",
-    "border-color-bottom", "border-color-left",
-    "border-width-top", "border-width-right",
-    "border-width-bottom", "border-width-left",
-    "color", "overflow-x", "overflow-y",
-    "opacity",
-    "font-family", "font-style", "font-variant",
-    "font-weight", "font-size",
-    "background-color", "background-image", "background-repeat",
-    "background-attachment", "background-position",
-    "text-decoration", "white-space",
-    "table-layout", "border-spacing",
-    "border-collapse",
-    "page-break-before", "page-break-after",
-    "zoom", "visibility", "display",
-    "box-sizing", "flex", "flex-flow", "align-self", "justify-content"};
+typedef std::unordered_map<Wt::Property, std::string> CssPropertyMap;
 
-std::string cssCamelNames_[] =
-  { "cssText", "width", "position",
-    "zIndex", "cssFloat", "clear",
-    "width", "height", "lineHeight",
-    "minWidth", "minHeight",
-    "maxWidth", "maxHeight",
-    "left", "right", "top", "bottom",
-    "verticalAlign", "textAlign",
-    "padding",
-    "paddingTop", "paddingRight",
-    "paddingBottom", "paddingLeft",
-    "margin",
-    "marginTop", "marginRight",
-    "marginBottom", "marginLeft",
-    "cursor",
-    "borderTop", "borderRight",
-    "borderBottom", "borderLeft",
-    "borderColorTop", "borderColorRight",
-    "borderColorBottom", "borderColorLeft",
-    "borderWidthTop", "borderWidthRight",
-    "borderWidthBottom", "borderWidthLeft",
-    "color", "overflowX", "overflowY",
-    "opacity",
-    "fontFamily", "fontStyle", "fontVariant",
-    "fontWeight", "fontSize",
-    "backgroundColor", "backgroundImage", "backgroundRepeat",
-    "backgroundAttachment", "backgroundPosition",
-    "textDecoration", "whiteSpace",
-    "tableLayout", "borderSpacing",
-    "border-collapse",
-    "pageBreakBefore", "pageBreakAfter",
-    "zoom", "visibility", "display",
-    "boxSizing", "flex", "flexFlow", "alignSelf", "justifyContent"
-  };
+CssPropertyMap createCssNamesMap()
+{
+  CssPropertyMap cssNames;
+  Wt::Utils::insert(cssNames, Wt::Property::StylePosition, std::string("position"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleZIndex,std::string("z-index"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleFloat,std::string("float"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleClear,std::string("clear"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleWidth,std::string("width"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleHeight,std::string("height"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleLineHeight,std::string("line-height"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleMinWidth,std::string("min-width"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleMinHeight,std::string("min-height"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleMaxWidth,std::string("max-width"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleMaxHeight,std::string("max-height"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleLeft,std::string("left"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleRight,std::string("right"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleTop,std::string("top"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBottom,std::string("bottom"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleVerticalAlign,std::string("vertical-align"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleTextAlign,std::string("text-align"));
+  Wt::Utils::insert(cssNames, Wt::Property::StylePadding,std::string("padding"));
+  Wt::Utils::insert(cssNames, Wt::Property::StylePaddingTop,std::string("padding-top"));
+  Wt::Utils::insert(cssNames, Wt::Property::StylePaddingRight,std::string("padding-right"));
+  Wt::Utils::insert(cssNames, Wt::Property::StylePaddingBottom,std::string("padding-bottom"));
+  Wt::Utils::insert(cssNames, Wt::Property::StylePaddingLeft,std::string("padding-left"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleMargin,std::string("margin"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleMarginTop,std::string("margin-top"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleMarginRight,std::string("margin-right"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleMarginBottom,std::string("margin-bottom"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleMarginLeft,std::string("margin-left"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleCursor,std::string("cursor"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBorderTop,std::string("border-top"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBorderRight,std::string("border-right"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBorderBottom,std::string("border-bottom"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBorderLeft,std::string("border-left"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBorderColorTop,std::string("border-color-top"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBorderColorRight,std::string("border-color-right"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBorderColorBottom,std::string("border-color-bottom"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBorderColorLeft,std::string("border-color-left"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBorderWidthTop,std::string("border-width-top"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBorderWidthRight,std::string("border-width-right"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBorderWidthBottom,std::string("border-width-bottom"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBorderWidthLeft,std::string("border-width-left"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleColor,std::string("color"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleOverflowX,std::string("overflow-x"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleOverflowY,std::string("overflow-y"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleOpacity,std::string("opacity"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleFontFamily,std::string("font-family"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleFontStyle,std::string("font-style"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleFontVariant,std::string("font-variant"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleFontWeight,std::string("font-weight"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleFontSize,std::string("font-size"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBackgroundColor,std::string("background-color"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBackgroundImage,std::string("background-image"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBackgroundRepeat,std::string("background-repeat"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBackgroundAttachment,std::string("background-attachment"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBackgroundPosition,std::string("background-position"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleTextDecoration,std::string("text-decoration"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleWhiteSpace,std::string("white-space"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleTableLayout,std::string("table-layout"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBorderSpacing,std::string("border-spacing"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBorderCollapse,std::string("border-collapse"));
+  Wt::Utils::insert(cssNames, Wt::Property::StylePageBreakBefore,std::string("page-break-before"));
+  Wt::Utils::insert(cssNames, Wt::Property::StylePageBreakAfter,std::string("page-break-after"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleZoom,std::string("zoom"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleVisibility,std::string("visibility"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleDisplay,std::string("display"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleWebkitAppearance,std::string("-webkit-appearance"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleBoxSizing,std::string("box-sizing"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleFlex,std::string("flex"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleFlexDirection,std::string("flex-direction"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleFlexFlow,std::string("flex-flow"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleAlignSelf,std::string("align-self"));
+  Wt::Utils::insert(cssNames, Wt::Property::StyleJustifyContent,std::string("justify-content"));
+  return cssNames;
+}
+
+CssPropertyMap cssNamesMap_ = createCssNamesMap();
+
+CssPropertyMap createCssCamelNamesMap()
+{
+  CssPropertyMap cssCamelNames;
+  Wt::Utils::insert(cssCamelNames, Wt::Property::Style,std::string("cssText"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::Style,std::string("width"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StylePosition,std::string("position"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleZIndex,std::string("zIndex"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleFloat,std::string("cssFloat"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleClear,std::string("clear"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleWidth,std::string("width"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleHeight,std::string("height"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleLineHeight,std::string("lineHeight"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleMinWidth,std::string("minWidth"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleMinHeight,std::string("minHeight"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleMaxWidth,std::string("maxWidth"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleMaxHeight,std::string("maxHeight"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleLeft,std::string("left"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleRight,std::string("right"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleTop,std::string("top"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBottom,std::string("bottom"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleVerticalAlign,std::string("verticalAlign"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleTextAlign,std::string("textAlign"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StylePadding,std::string("padding"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StylePaddingTop,std::string("paddingTop"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StylePaddingRight,std::string("paddingRight"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StylePaddingBottom,std::string("paddingBottom"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StylePaddingLeft,std::string("paddingLeft"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleMargin,std::string("margin"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleMarginTop,std::string("marginTop"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleMarginRight,std::string("marginRight"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleMarginBottom,std::string("marginBottom"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleMarginLeft,std::string("marginLeft"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleCursor,std::string("cursor"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBorderTop,std::string("borderTop"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBorderRight,std::string("borderRight"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBorderBottom,std::string("borderBottom"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBorderLeft,std::string("borderLeft"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBorderColorTop,std::string("borderColorTop"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBorderColorRight,std::string("borderColorRight"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBorderColorBottom,std::string("borderColorBottom"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBorderColorLeft,std::string("borderColorLeft"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBorderWidthTop,std::string("borderWidthTop"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBorderWidthRight,std::string("borderWidthRight"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBorderWidthBottom,std::string("borderWidthBottom"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBorderWidthLeft,std::string("borderWidthLeft"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleColor,std::string("color"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleOverflowX,std::string("overflowX"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleOverflowY,std::string("overflowY"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleOpacity,std::string("opacity"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleFontFamily,std::string("fontFamily"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleFontStyle,std::string("fontStyle"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleFontVariant,std::string("fontVariant"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleFontWeight,std::string("fontWeight"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleFontSize,std::string("fontSize"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBackgroundColor,std::string("backgroundColor"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBackgroundImage,std::string("backgroundImage"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBackgroundRepeat,std::string("backgroundRepeat"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBackgroundAttachment,std::string("backgroundAttachment"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBackgroundPosition,std::string("backgroundPosition"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleTextDecoration,std::string("textDecoration"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleWhiteSpace,std::string("whiteSpace"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleTableLayout,std::string("tableLayout"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBorderSpacing,std::string("borderSpacing"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBorderCollapse,std::string("border-collapse"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StylePageBreakBefore,std::string("pageBreakBefore"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StylePageBreakAfter,std::string("pageBreakAfter"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleZoom,std::string("zoom"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleVisibility,std::string("visibility"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleDisplay,std::string("display"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleWebkitAppearance,std::string("webKitAppearance"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleBoxSizing,std::string("boxSizing"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleFlex,std::string("flex"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleFlexDirection,std::string("flexDirection"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleFlexFlow,std::string("flexFlow"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleAlignSelf,std::string("alignSelf"));
+  Wt::Utils::insert(cssCamelNames, Wt::Property::StyleJustifyContent,std::string("justifyContent"));
+  return cssCamelNames;
+}
+
+CssPropertyMap cssCamelNamesMap_ = createCssCamelNamesMap();
 
 const std::string unsafeChars_ = " $&+,:;=?@'\"<>#%{}|\\^~[]`/";
 
@@ -152,6 +253,8 @@ static_assert(sizeof(defaultInline_) / sizeof(defaultInline_[0]) == static_cast<
 }
 
 namespace Wt {
+
+LOGGER("DomElement");
 
 #if defined(WT_THREADED) || defined(WT_TARGET_JAVA)
   std::atomic<unsigned> DomElement::nextId_(0);
@@ -305,7 +408,8 @@ void DomElement::addChild(DomElement *child)
   if (child->mode() == Mode::Create) {
     numManipulations_ += 2; // cannot be short-cutted
 
-    if (wasEmpty_ && canWriteInnerHTML(WApplication::instance())) {
+    // Omit self closing tags from adding immediate HTML children, add them later
+    if (wasEmpty_ && canWriteInnerHTML(WApplication::instance()) && !isSelfClosingTag(type())) {
       child->asHTML(childrenHtml_, javaScript_, timeouts_);
       delete child;
     } else {
@@ -367,7 +471,7 @@ void DomElement::setEvent(const char *eventName,
     js << "o=this;";
 
     if (anchorClick)
-      js << "if(e.ctrlKey||e.metaKey||(" WT_CLASS ".button(e) > 1))"
+      js << "if(e.ctrlKey||e.metaKey||e.shiftKey||(" WT_CLASS ".button(e) > 1))"
         "return true;else{";
 
     /*
@@ -508,10 +612,20 @@ void DomElement::callJavaScript(const std::string& jsCode,
                                 bool evenWhenDeleted)
 {
   ++numManipulations_;
+  // Bug #12283: Ensure the js string isn't empty (for back())
+  if (jsCode.empty()) {
+    return;
+  }
+
+  // Bug #12006: For safety always append semicolon
+  std::string terminatedJsCode = jsCode;
+  if (jsCode.back() != ';') {
+    terminatedJsCode += ";";
+  }
   if (!evenWhenDeleted)
-    javaScript_ << jsCode << '\n';
+    javaScript_ << terminatedJsCode << '\n';
   else
-    javaScriptEvenWhenDeleted_ += jsCode;
+    javaScriptEvenWhenDeleted_ += terminatedJsCode;
 }
 
 void DomElement::setProperties(const PropertyMap& properties)
@@ -697,8 +811,7 @@ std::string DomElement::cssStyle() const
     else if ((p >= static_cast<unsigned int>(Property::StylePosition)) &&
              (p < static_cast<unsigned int>(Property::LastPlusOne))) {
       if (!j->second.empty()) {
-        style << cssNames_[p -
-                            static_cast<unsigned int>(Property::StylePosition)]
+        style << cssName(j->first)
               << ':' << j->second << ';';
         if (p >= static_cast<unsigned int>(Property::StyleBoxSizing)) {
           WApplication *app = WApplication::instance();
@@ -710,8 +823,7 @@ std::string DomElement::cssStyle() const
               style << "-webkit-";
           }
 
-          style << cssNames_[p -
-                              static_cast<unsigned int>(Property::StylePosition)]
+          style << cssName(j->first)
                 << ':' << j->second << ';';
         }
       }
@@ -1054,6 +1166,10 @@ void DomElement::asHTML(EscapeOStream& out,
       out << " placeholder=";
       fastHtmlAttributeValue(out, attributeValues, i->second);
       break;
+    case Property::Orient:
+      out << " orient=";
+      fastHtmlAttributeValue(out, attributeValues, i->second);
+      break;
     default:
       break;
     }
@@ -1080,8 +1196,13 @@ void DomElement::asHTML(EscapeOStream& out,
      * XHTML recommendation, back-wards compatibility with HTML: C.2, C.3:
      * do not use minimized forms when content is empty like <p />, and use
      * minimized forms for certain elements like <br />
+     *
+     * The additional case is for the native WSlider, which requires the
+     * `datalist` element to be present. This is "forcibly" added, since
+     * normally an `input` is selfclosing.
      */
-    if (!isSelfClosingTag(renderedType)) {
+    if (!isSelfClosingTag(renderedType)
+        || renderedType == DomElementType::INPUT && !childrenToAdd_.empty() && childrenToAdd_[0].child->type() == DomElementType::DATALIST) {
       out << '>';
       for (unsigned i = 0; i < childrenToAdd_.size(); ++i)
         childrenToAdd_[i].child->asHTML(out, javaScript, timeouts);
@@ -1158,9 +1279,9 @@ bool DomElement::canWriteInnerHTML(WApplication *app) const
    * BUG: Internet Explorer Fails to Set the innerHTML Property of the
    * SelectionFlag::Select Object. Seems to affect at least up to IE6.0
    */
-  if ((app->environment().agentIsIE()
-       || app->environment().agent() == UserAgent::Konqueror)
-      && (   type_ == DomElementType::TBODY
+  if (((app->environment().agentIsIE()
+        || app->environment().agent() == UserAgent::Konqueror)
+       && (   type_ == DomElementType::TBODY
           || type_ == DomElementType::THEAD
           || type_ == DomElementType::TABLE
           || type_ == DomElementType::COLGROUP
@@ -1168,6 +1289,7 @@ bool DomElement::canWriteInnerHTML(WApplication *app) const
           || type_ == DomElementType::SELECT
           || type_ == DomElementType::TD
           || type_ == DomElementType::OPTGROUP))
+       || mode_ == Mode::Update)
     return false;
 
   return true;
@@ -1687,11 +1809,11 @@ void DomElement::setJavaScriptProperties(EscapeOStream& out,
            * ignored, but we want this information client-side. (Still, really ?)
            */
           out << var_ << ".style['"
-              << cssNames_[p - static_cast<unsigned int>(Property::StylePosition)]
+              << cssName(i->first)
               << "']='" << i->second << "';";
         } else {
           out << var_ << ".style."
-              << cssCamelNames_[p - static_cast<unsigned int>(Property::Style)]
+              << cssJavaScriptName(i->first)
               << "='" << i->second << "';";
         }
       }
@@ -1775,10 +1897,24 @@ std::string DomElement::tagName(DomElementType type)
   return elementNames_[static_cast<unsigned int>(type)];
 }
 
-const std::string& DomElement::cssName(Property property)
+std::string DomElement::cssName(Property property)
 {
-  return cssNames_[static_cast<unsigned int>(property) -
-                   static_cast<unsigned int>(Property::StylePosition)];
+  try {
+    return Utils::access(cssNamesMap_, property);
+  } catch (std::out_of_range& exc) {
+    LOG_WARN("DomElement::cssName(): the name cannot be retrieved.");
+    return "";
+  }
+}
+
+std::string DomElement::cssJavaScriptName(Property property)
+{
+  try {
+    return Utils::access(cssCamelNamesMap_, property);
+  } catch (std::out_of_range& exc) {
+    LOG_WARN("DomElement::cssJavaScriptName(): the name cannot be retrieved.");
+    return "";
+  }
 }
 
 void DomElement::setGlobalUnfocused(bool b)

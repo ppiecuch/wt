@@ -102,4 +102,17 @@ typedef unsigned __int32 uint32_t;  /* 32 bit unsigned */
 #endif
 #endif
 
+#ifndef WT_FALLTHROUGH
+#  ifndef WT_CNOR
+#    if defined(WT_CXX17)
+#      define WT_FALLTHROUGH [[fallthrough]];
+#    elif defined(__GNUC__)
+#      define WT_FALLTHROUGH __attribute__((fallthrough));
+#    endif
+#  endif
+#  ifndef WT_FALLTHROUGH
+#    define WT_FALLTHROUGH
+#  endif
+#endif
+
 #endif // DLLDEFS_H_

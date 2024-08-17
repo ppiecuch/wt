@@ -4,14 +4,18 @@ IF(ENABLE_LIBWTTEST)
     any/AnyTest.C
     auth/BCryptTest.C
     auth/SHA1Test.C
+    configuration/EntryPointTest.C
     core/BindTest.C
     core/ObservingPtrTest.C
     chart/WChartTest.C
     json/JsonParserTest.C
     json/JsonSerializerTest.C
     json/JsonValueTest.C
+    http/CookieTest.C
     http/HttpClientTest.C
+    formdelegate/WFormDelegate.C
     mail/MailClientTest.C
+    mail/MailMessageTest.C
     matrix/MatrixTest.C
     models/WBatchEditProxyModelTest.C
     models/WFormModelTest.C
@@ -31,16 +35,24 @@ IF(ENABLE_LIBWTTEST)
     render/SpecificityTest.C
     render/WTextRendererTest.C
     strings/WStringTest.C
+    types/WDateTest.C
+    types/WDateTimeTest.C
     utf8/Utf8Test.C
     utf8/XmlTest.C
     utils/Base64Test.C
+    utils/DateUtils.C
     utils/EraseWord.C
+    utils/HtmlEncode.C
+    utils/InfraUtils.C
     utils/ParseNumber.C
     utils/RoundJsString.C
     utils/XmlUtils.C
+    validators/WEmailValidator.C
+    widgets/WCompositeWidgetTest.C
     widgets/WContainerWidgetTest.C
     widgets/WDateEditTest.C
     widgets/WSpinBoxTest.C
+    widgets/WStackedWidgetTest.C
     widgets/WTextTest.C
     widgets/WTreeViewTest.C
     length/WLengthTest.C
@@ -52,6 +64,7 @@ IF(ENABLE_LIBWTTEST)
     testenvironment/TestEnvironmentTest.C
     signals/SignalTest.C
     wdatetime/WDateTimeTest.C
+    web/DomElementTest.C
   )
 
   IF (WT_HAS_WRASTERIMAGE)
@@ -157,7 +170,7 @@ IF(ENABLE_LIBWTTEST)
     ENDIF(HAVE_FIREBIRD)
 
     IF(HAVE_SQLITE)
-      ADD_EXECUTABLE(       test.sqlite3 ${DBO_TEST_SOURCES})
+      ADD_EXECUTABLE(       test.sqlite3 ${DBO_TEST_SOURCES} dbo/SqliteTest.C)
       TARGET_LINK_LIBRARIES(test.sqlite3 wt wttest wtdbo wtdbosqlite3 ${BOOST_TEST_LIBRARIES})
       SET_TARGET_PROPERTIES(test.sqlite3 PROPERTIES COMPILE_FLAGS "-DSQLITE3")
       IF(MSVC)

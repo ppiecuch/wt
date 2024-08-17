@@ -113,17 +113,28 @@ ReplyPtr RequestHandler::handleRequest(Request& req,
 
     if (bestMatch.entryPoint) {
       const Wt::EntryPoint& ep = *bestMatch.entryPoint;
-
-      if (!ep.path().empty())
-        req.request_extra_path = req.request_path.substr(bestMatch.extra);
-
-      req.request_path.resize(bestMatch.extra, '\0');
-
+      req.extra_start_index = bestMatch.extraStartIndex;
       req.url_params = std::move(bestMatch.urlParams);
+
+      bool isRedirect = false;
+      if (ep.type() != Wt::EntryPointType::StaticResource) {
+        const auto pos = req.request_query.find("request=redirect");
+        // request=redirect should be at the beginning or preceded by '&'
+        if (pos != std::string::npos &&
+            (pos == 0 || req.request_query[pos - 1] == '&')) {
+          // request=redirect should be at the end or be followed by '&'
+          const auto after = pos + (sizeof("request=redirect") - 1);
+          if (after == req.request_query.size() ||
+              req.request_query[after] == '&') {
+            isRedirect = true;
+          }
+        }
+      }
 
       if (wtConfig_.sessionPolicy() != Wt::Configuration::DedicatedProcess ||
           ep.type() == Wt::EntryPointType::StaticResource ||
-          config_.parentPort() != -1) {
+          config_.parentPort() != -1 ||
+          isRedirect) {
         if (!lastWtReply)
           lastWtReply.reset(new WtReply(req, ep, config_));
         else

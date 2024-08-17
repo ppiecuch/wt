@@ -23,19 +23,9 @@ LOGGER("WFormDelegate");
 
 namespace Wt {
   namespace Form {
-WFormDelegate<Wt::WString, void>::WFormDelegate()
-  : WAbstractFormDelegate()
-{
-}
-
 std::unique_ptr<Wt::WWidget> WFormDelegate<Wt::WString, void>::createFormWidget()
 {
   return std::make_unique<Wt::WLineEdit>();
-}
-
-WFormDelegate<std::string, void>::WFormDelegate()
-  : WAbstractFormDelegate()
-{
 }
 
 std::unique_ptr<Wt::WWidget> WFormDelegate<std::string, void>::createFormWidget()
@@ -46,11 +36,6 @@ std::unique_ptr<Wt::WWidget> WFormDelegate<std::string, void>::createFormWidget(
 void WFormDelegate<std::string, void>::updateModelValue(Wt::WFormModel *model, Wt::WFormModel::Field field, Wt::WFormWidget *edit)
 {
   model->setValue(field, edit->valueText().toUTF8());
-}
-
-WFormDelegate<Wt::WDate, void>::WFormDelegate()
-  : WAbstractFormDelegate()
-{
 }
 
 std::unique_ptr<Wt::WWidget> WFormDelegate<Wt::WDate, void>::createFormWidget()
@@ -65,17 +50,29 @@ std::shared_ptr<Wt::WValidator> WFormDelegate<Wt::WDate, void>::createValidator(
 
 void WFormDelegate<Wt::WDate, void>::updateModelValue(Wt::WFormModel *model, Wt::WFormModel::Field field, Wt::WFormWidget *edit)
 {
-  Wt::WDateEdit *dateEdit = dynamic_cast<Wt::WDateEdit *>(edit);
-  if (dateEdit) {
-    model->setValue(field, dateEdit->date());
+  if (!edit->valueText().empty()) {
+    Wt::WDate date = Wt::WDate::fromString(edit->valueText(), Wt::WLocale::currentLocale().dateFormat());
+    if (date.isValid()) {
+      model->setValue(field, date);
+    } else {
+      LOG_ERROR("Could not convert '" << edit->valueText() << "' to date");
+
+      std::shared_ptr<Wt::WValidator> validator = edit->validator();
+      if (validator) {
+        model->setValue(field, validator->validate(edit->valueText()));
+      }
+    }
   } else {
-    LOG_ERROR("Could not cast edit to WDateEdit!");
+    model->setValue(field, Wt::WDate());
   }
 }
 
-WFormDelegate<Wt::WTime, void>::WFormDelegate()
-  : WAbstractFormDelegate()
+void WFormDelegate<Wt::WDate, void>::updateViewValue(Wt::WFormModel *model, Wt::WFormModel::Field field, Wt::WFormWidget *edit)
 {
+  Wt::cpp17::any v =  model->value(field);
+  if (v.type() != typeid(Wt::WValidator::Result)) {
+    edit->setValueText(Wt::asString(v));
+  }
 }
 
 std::unique_ptr<Wt::WWidget> WFormDelegate<Wt::WTime, void>::createFormWidget()
@@ -90,17 +87,29 @@ std::shared_ptr<Wt::WValidator> WFormDelegate<Wt::WTime, void>::createValidator(
 
 void WFormDelegate<Wt::WTime, void>::updateModelValue(Wt::WFormModel *model, Wt::WFormModel::Field field, Wt::WFormWidget *edit)
 {
-  Wt::WTimeEdit *timeEdit = dynamic_cast<Wt::WTimeEdit *>(edit);
-  if (timeEdit) {
-    model->setValue(field, timeEdit->time());
+  if (!edit->valueText().empty()) {
+    Wt::WTime time = Wt::WTime::fromString(edit->valueText(), Wt::WLocale::currentLocale().timeFormat());
+    if (time.isValid()) {
+      model->setValue(field, time);
+    } else {
+      LOG_ERROR("Could not convert '" << edit->valueText() << "' to time");
+
+      std::shared_ptr<Wt::WValidator> validator = edit->validator();
+      if (validator) {
+        model->setValue(field, validator->validate(edit->valueText()));
+      }
+    }
   } else {
-    LOG_ERROR("Could not cast edit to WTimeEdit!");
+    model->setValue(field, Wt::WTime());
   }
 }
 
-WFormDelegate<Wt::WDateTime, void>::WFormDelegate()
-  : WAbstractFormDelegate()
+void WFormDelegate<Wt::WTime, void>::updateViewValue(Wt::WFormModel *model, Wt::WFormModel::Field field, Wt::WFormWidget *edit)
 {
+  Wt::cpp17::any v =  model->value(field);
+  if (v.type() != typeid(Wt::WValidator::Result)) {
+    edit->setValueText(Wt::asString(v));
+  }
 }
 
 std::unique_ptr<Wt::WWidget> WFormDelegate<Wt::WDateTime, void>::createFormWidget()
@@ -114,11 +123,6 @@ void WFormDelegate<Wt::WDateTime, void>::updateModelValue(Wt::WFormModel *model,
     Wt::WDateTime value = Wt::WDateTime::fromString(edit->valueText(), Wt::WLocale::currentLocale().dateTimeFormat());
     model->setValue(field, value);
   }
-}
-
-WFormDelegate<bool,void>::WFormDelegate()
-  : WAbstractFormDelegate()
-{
 }
 
 std::unique_ptr<Wt::WWidget> WFormDelegate<bool, void>::createFormWidget()
@@ -155,11 +159,6 @@ void WFormDelegate<bool, void>::updateViewValue(Wt::WFormModel *model, Wt::WForm
   } else {
     LOG_ERROR("Could not cast edit to WCheckBox!");
   }
-}
-
-WFormDelegate<int, void>::WFormDelegate()
-  : WAbstractFormDelegate()
-{
 }
 
 std::unique_ptr<Wt::WWidget> WFormDelegate<int, void>::createFormWidget()
@@ -200,11 +199,6 @@ void WFormDelegate<int, void>::updateViewValue(Wt::WFormModel *model, Wt::WFormM
   if (v.type() != typeid(Wt::WValidator::Result)) {
     edit->setValueText(Wt::asString(v));
   }
-}
-
-WFormDelegate<double, void>::WFormDelegate()
-  : WAbstractFormDelegate()
-{
 }
 
 std::unique_ptr<Wt::WWidget> WFormDelegate<double, void>::createFormWidget()

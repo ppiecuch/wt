@@ -35,6 +35,8 @@ namespace {
     Exception,
   };
 
+  constexpr auto SimulatedWorkTime = std::chrono::milliseconds{500};
+
   class TestResource : public WResource
   {
   public:
@@ -42,6 +44,7 @@ namespace {
       : delaySendingBody_(false),
         haveEverMoreData_(false),
         haveRandomMoreData_(false),
+        simulateWork_(false),
         aborted_(0)
     { }
 
@@ -69,9 +72,17 @@ namespace {
       return aborted_;
     }
 
+    void simulateWork() {
+      simulateWork_ = true;
+    }
+
     virtual void handleRequest(const Http::Request& request,
                                Http::Response& response) override
     {
+      if (simulateWork_) {
+        std::this_thread::sleep_for(SimulatedWorkTime);
+      }
+
       switch (type_) {
       case TestType::Simple:
         return handleSimple(request, response);
@@ -93,6 +104,7 @@ namespace {
     bool delaySendingBody_;
     bool haveEverMoreData_;
     bool haveRandomMoreData_;
+    bool simulateWork_;
     int aborted_;
     TestType type_ = TestType::Simple;
 
@@ -139,7 +151,8 @@ namespace {
             "--docroot", "." 
           };
       setServerConfiguration(argc, (char **)argv);
-      addResource(&resource_, "/test");
+      resource_ = std::make_shared<TestResource>();
+      addResource(resource_, "/test");
     }
 
     std::string address() 
@@ -147,10 +160,10 @@ namespace {
       return "127.0.0.1:" + std::to_string(httpPort());
     }
 
-    TestResource& resource() { return resource_; }
+    TestResource& resource() { return *resource_; }
 
   private:
-    TestResource resource_;
+    std::shared_ptr<TestResource> resource_;
   };
 
   class Client : public Wt::WObject {
@@ -202,8 +215,10 @@ namespace {
         doneCondition_.wait(guard);
     }
 
-    bool isDone() const
+    bool isDone()
     {
+      std::unique_lock<std::mutex> guard(doneMutex_);
+
       return done_;
     }
 
@@ -644,5 +659,50 @@ BOOST_AUTO_TEST_CASE( http_wresource_exception )
     BOOST_REQUIRE(client.message().status() == 500);
   }
 }
+
+BOOST_AUTO_TEST_CASE( http_client_server_clean_shutdown )
+{
+  Server server;
+
+  server.resource().setType(TestType::Continuation);
+  server.resource().simulateWork();
+
+  if (server.start()) {
+    Client client;
+    client.get("http://" + server.address() + "/test");
+
+    std::this_thread::sleep_for(SimulatedWorkTime / 2);
+
+    client.abort();
+    client.waitDone();
+  }
+}
+
+BOOST_AUTO_TEST_CASE( http_server_clean_close )
+{
+  constexpr unsigned ClientCount {1000};
+  Server server;
+
+  server.resource().setType(TestType::Continuation);
+  server.resource().simulateWork();
+
+  if (server.start()) {
+    std::vector<Client *> clients;
+
+    for (unsigned i = 0; i < ClientCount; ++i) {
+      Client *client = new Client();
+      client->get("http://" + server.address() + "/test");
+      clients.push_back(client);
+    }
+
+    server.stop();
+
+    for (unsigned i = 0; i < ClientCount; ++i) {
+      clients[i]->waitDone();
+      delete clients[i];
+    }
+  }
+}
+
 
 #endif // WT_THREADED

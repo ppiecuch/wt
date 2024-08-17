@@ -3,6 +3,8 @@
 #include "WebController.h"
 #include "Wt/WServer.h"
 
+#include <boost/thread.hpp>
+
 #include "Android.h"
 
 #include <stdlib.h>
@@ -17,6 +19,11 @@ void preventRemoveOfSymbolsDuringLinking() {
 #ifdef ANDROID
   extern "C" {
     int main(int argc, const char** argv);
+    
+    void runMainAndCleanup(int argc, const char** argv) {
+        main(argc, argv);
+        delete[] argv;
+    }
 
     JNIEXPORT
     jint
@@ -27,21 +34,27 @@ void preventRemoveOfSymbolsDuringLinking() {
       unsigned i;
 
       jsize argsCount = env->GetArrayLength(strArray);
-      std::vector<std::string> args(argsCount);
+      std::vector<std::string> args;
+      args.reserve(argsCount);
       for (i = 0; i < argsCount; i++) {
         jstring jstr = (jstring)env->GetObjectArrayElement(strArray, i);
-        std::string s = std::string(env->GetStringUTFChars(jstr, 0));
+        const char* rawChars = env->GetStringUTFChars(jstr, 0);
+        std::string s = std::string(rawChars);
+        env->ReleaseStringUTFChars(jstr, rawChars);
         env->DeleteLocalRef(jstr);
 
         if (boost::starts_with(s, "-D")) {
           std::string env = s.substr(2);
           size_t index = env.find("=");
           if (index != std::string::npos) {
-            if (!putenv(env.c_str()))
-              std::cerr
-                << "WtAndroid::startwt putenv() failed on: "
-                << env
-                << std::endl;
+              std::string key = env.substr(0, index);
+              std::string value = env.substr(index + 1);
+              if (setenv(key.c_str(), value.c_str(), 1) != 0) {
+                std::cerr 
+                  << "WtAndroid::startwt setenv() failed on: " 
+                  << env 
+                  << std::endl;
+              }
           } else {
             std::cerr
               << "WtAndroid::startwt invalid environment variable definition: "
@@ -62,7 +75,7 @@ void preventRemoveOfSymbolsDuringLinking() {
       try {
         if (Wt::WServer::instance())
           return Wt::WServer::instance()->httpPort();
-        boost::thread mainThread(&main, argc, argv);
+        boost::thread mainThread(&runMainAndCleanup, argc, argv);
         while (true) {
           if (Wt::WServer::instance()) {
             int httpPort = Wt::WServer::instance()->httpPort();

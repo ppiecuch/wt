@@ -49,6 +49,12 @@ WT_DECLARE_WT_MEMBER(
 
     this.defaultValue = defaultValue;
 
+    function isBS5() {
+      return typeof WT.theme === "object" &&
+        WT.theme.type === "bootstrap" &&
+        WT.theme.version === 5;
+    }
+
     /* Checks if we are (still) assisting the given edit */
     function checkEdit(edit) {
       return edit.classList.contains("Wt-suggest-onedit") ||
@@ -128,11 +134,7 @@ WT_DECLARE_WT_MEMBER(
     }
 
     function calcButtonWidth(edit) {
-      if (
-        typeof WT.theme === "object" &&
-        WT.theme.type === "bootstrap" &&
-        WT.theme.version === 5
-      ) {
+      if (isBS5()) {
         try {
           const style = getComputedStyle(edit);
           const widthPx = parseInt(style.backgroundSize.match(/^([0-9]+)px ([0-9]+)px$/)[1], 10);
@@ -169,6 +171,9 @@ WT_DECLARE_WT_MEMBER(
       hidePopup();
       editId = edit.id;
       droppedDown = true;
+      if (typeof value === "undefined") {
+        value = "";
+      }
       self.refilter(value);
     };
 
@@ -294,19 +299,18 @@ WT_DECLARE_WT_MEMBER(
           * Update selection
           */
           if (sel) {
-            sel.className = "";
+            sel.classList.remove("active");
+            if (isBS5()) {
+              sel.firstChild.classList.remove("active");
+            }
             selId = null;
           }
           if (n && WT.hasTag(n, "LI")) {
-            n.className = "active";
-            if (
-              typeof APP.theme === "object" &&
-              APP.theme.type === "bootstrap" &&
-              APP.theme.version >= 4
-            ) {
-              sel.firstChild.className = sel.firstChild.className.replace("active", "");
-              n.firstChild.className += " active";
+            n.classList.add("active");
+            if (isBS5()) {
+              n.firstChild.classList.add("active");
             }
+            scrollToSelected(n);
             selId = n.id;
           }
 
@@ -347,7 +351,6 @@ WT_DECLARE_WT_MEMBER(
         matcher = matcherJS(edit),
         sels = el.childNodes,
         text = (isDropDownIconUnfiltered && value !== null) ? value : matcher(null);
-
       lastFilterValue = isDropDownIconUnfiltered ? value : edit.value;
 
       if (filterMinLength > 0 || filterMore) {
@@ -400,8 +403,9 @@ WT_DECLARE_WT_MEMBER(
             child.style.display = "none";
           }
 
-          if (child.className !== "") {
-            child.className = "";
+          child.classList.remove("active");
+          if (isBS5()) {
+            child.firstChild.classList.remove("active");
           }
         }
       }
@@ -422,13 +426,9 @@ WT_DECLARE_WT_MEMBER(
         }
 
         if (sel) {
-          sel.className = "active";
-          if (
-            typeof WT.theme === "object" &&
-            WT.theme.type === "bootstrap" &&
-            WT.theme.version >= 4
-          ) {
-            sel.firstChild.className += " active";
+          sel.classList.add("active");
+          if (isBS5()) {
+            sel.firstChild.classList.add("active");
           }
           scrollToSelected(sel);
         }

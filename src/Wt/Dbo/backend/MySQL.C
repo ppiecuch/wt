@@ -28,6 +28,7 @@
 
 #include <mysql.h>
 #include <errmsg.h>
+#include <mysqld_error.h>
 
 #define BYTEAOID 17
 
@@ -288,7 +289,8 @@ class MySQLStatement final : public SqlStatement
       } else{
         in_pars_[column].buffer_type = MYSQL_TYPE_DATETIME;
 
-        auto time = cpp20::date::make_time(value - day_tp);
+        const auto us = cpp20::date::floor<std::chrono::microseconds>(value - day_tp);
+        const auto time = cpp20::date::hh_mm_ss<std::chrono::microseconds>(us);
         ts->hour = time.hours().count();
         ts->minute = time.minutes().count();
         ts->second = time.seconds().count();
@@ -1028,8 +1030,16 @@ void MySQL::checkConnection()
     err_nb = mysql_errno(impl_->mysql);
     err = std::string(mysql_error(impl_->mysql));
   }
+  // Not every MySQL backend has this (new since 8.0.24).
+  // MariaDB does not have this value.
+#ifdef ER_CLIENT_INTERACTION_TIMEOUT
+  if (err_nb == CR_SERVER_GONE_ERROR ||
+      err_nb == CR_SERVER_LOST ||
+      err_nb == ER_CLIENT_INTERACTION_TIMEOUT) {
+#else
   if (err_nb == CR_SERVER_GONE_ERROR ||
       err_nb == CR_SERVER_LOST) {
+#endif
     clearStatementCache();
     mysql_close(impl_->mysql);
     impl_->mysql = nullptr;

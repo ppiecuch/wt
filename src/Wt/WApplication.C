@@ -18,6 +18,7 @@
 #include "Wt/WMemoryResource.h"
 #include "Wt/WServer.h"
 #include "Wt/WTimer.h"
+#include "Wt/Http/Cookie.h"
 
 #include "WebSession.h"
 #include "DomElement.h"
@@ -114,6 +115,8 @@ WApplication::WApplication(const WEnvironment& env
     selectionStart_(-1),
     selectionEnd_(-1),
     layoutDirection_(LayoutDirection::LeftToRight),
+    htmlAttributeChanged_(true),
+    bodyAttributeChanged_(true),
     scriptLibrariesAdded_(0),
     theme_(nullptr),
     styleSheetsAdded_(0),
@@ -986,6 +989,52 @@ void WApplication::setHtmlClass(const std::string& styleClass)
   bodyHtmlClassChanged_ = true;
 }
 
+void WApplication::setHtmlAttribute(const std::string& name, const std::string& value)
+{
+  std::unordered_map<std::string, std::string>::const_iterator i
+    = htmlAttributes_.find(name);
+
+  if (i != htmlAttributes_.end() && i->second == value)
+    return;
+
+  htmlAttributes_[name] = value;
+  htmlAttributeChanged_ = true;
+}
+
+WString WApplication::htmlAttribute(const std::string& name) const
+{
+  std::unordered_map<std::string, std::string>::const_iterator i
+    = htmlAttributes_.find(name);
+
+  if (i != htmlAttributes_.end())
+    return i->second;
+
+  return WString();
+}
+
+void WApplication::setBodyAttribute(const std::string& name, const std::string& value)
+{
+  std::unordered_map<std::string, std::string>::const_iterator i
+    = bodyAttributes_.find(name);
+
+  if (i != bodyAttributes_.end() && i->second == value)
+    return;
+
+  bodyAttributes_[name] = value;
+  bodyAttributeChanged_ = true;
+}
+
+WString WApplication::bodyAttribute(const std::string& name) const
+{
+  std::unordered_map<std::string, std::string>::const_iterator i
+    = bodyAttributes_.find(name);
+
+  if (i != bodyAttributes_.end())
+    return i->second;
+
+  return WString();
+}
+
 EventSignal<WKeyEvent>& WApplication::globalKeyWentDown()
 {
   return domRoot_->keyWentDown();
@@ -1097,10 +1146,11 @@ std::string WApplication::encodeUntrustedUrl(const std::string& url) const
     && session_->hasSessionIdInUrl();
 
   if (needRedirect) {
-    WebController *c = session_->controller();
     return "?request=redirect&url=" + Utils::urlEncode(url)
       + "&hash="
-      + Utils::urlEncode(c->computeRedirectHash(url));
+      + Utils::urlEncode(
+              WebController::computeRedirectHash(
+                      environment().redirectSecret_, url));
   } else
     return url;
 }
@@ -1116,9 +1166,17 @@ void WApplication::setCookie(const std::string& name,
                              const std::string& path,
                              bool secure)
 {
-  WDateTime expires = WDateTime::currentDateTime();
-  expires = expires.addSecs(maxAge);
-  session_->renderer().setCookie(name, value, expires, domain, path, secure);
+  Http::Cookie cookie(name, value);
+#ifndef WT_TARGET_JAVA
+  cookie.setMaxAge(std::chrono::seconds(maxAge));
+#else
+  cookie.setMaxAge(maxAge);
+#endif
+  cookie.setDomain(domain);
+  cookie.setPath(path);
+  cookie.setSecure(secure);
+
+  session_->renderer().setCookie(cookie);
 }
 
 #ifndef WT_TARGET_JAVA
@@ -1129,17 +1187,40 @@ void WApplication::setCookie(const std::string& name,
                              const std::string& path,
                              bool secure)
 {
-  session_->renderer().setCookie(name, value, expires, domain, path, secure);
+  Http::Cookie cookie(name, value, expires);
+  cookie.setDomain(domain);
+  cookie.setPath(path);
+  cookie.setSecure(secure);
+
+  session_->renderer().setCookie(cookie);
 }
 #endif // WT_TARGET_JAVA
+
+void WApplication::setCookie(const Http::Cookie& cookie)
+{
+#ifndef WT_TARGET_JAVA
+  if (cookie.sameSite() == Http::Cookie::SameSite::None &&
+      !cookie.secure()) {
+    LOG_WARN("WApplication::setCookie: using SameSite value None, but not secure (cookie name: " << cookie.name() << ")");
+  }
+#endif // WT_TARGET_JAVA
+  session_->renderer().setCookie(cookie);
+}
+
+void WApplication::removeCookie(const Http::Cookie& cookie)
+{
+  session_->renderer().removeCookie(cookie);
+}
 
 void WApplication::removeCookie(const std::string& name,
                                 const std::string& domain,
                                 const std::string& path)
 {
-  session_->renderer().setCookie(name, std::string(),
-                                 WDateTime(WDate(1970,1,1)),
-                                 domain, path, false);
+  Http::Cookie rmCookie(name);
+  rmCookie.setDomain(domain);
+  rmCookie.setPath(path);
+
+  session_->renderer().removeCookie(rmCookie);
 }
 
 void WApplication::addMetaLink(const std::string &href,
@@ -1470,6 +1551,14 @@ WApplication::UpdateLock::UpdateLock(WApplication *app)
 #ifndef WT_THREADED
   return;
 #else
+
+  // check if 'app' is a nullptr to prevent an access violation
+  // in the following code
+  if (!app) {
+    ok_ = false;
+    return;
+  }
+
   /*
    * If we are already handling this application, then we already have
    * exclusive access, unless we are not having the lock (e.g. from a

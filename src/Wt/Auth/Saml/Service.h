@@ -438,7 +438,7 @@ public:
 
   /*! \brief Sets the AllowCreate parameter for the name id policy in the authentication request.
    *
-   * This detauls to true.
+   * This defaults to true.
    *
    * \sa setNameIdPolicyFormat()
    */
@@ -750,8 +750,6 @@ private:
 
   // state
   std::unique_ptr<ServiceImpl> impl_;
-  std::unique_ptr<StaticAcsResource> staticAcsResource_;
-  std::unique_ptr<MetadataResource> metadataResource_;
 
   // configuration
   std::string secret_;

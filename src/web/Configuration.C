@@ -12,11 +12,11 @@
 #include "WebUtils.h"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
+
 #ifdef WT_BOOST_CONF_LOCK
 #include <boost/thread.hpp>
 #endif
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <algorithm>
 #include <array>
@@ -246,8 +246,7 @@ Configuration::Configuration(const std::string& applicationPath,
     runDirectory_(RUNDIR),
     connectorSlashException_(false), // need to use ?_=
     connectorNeedReadBody_(false),
-    connectorWebSockets_(true),
-    defaultEntryPoint_("/")
+    connectorWebSockets_(true)
 {
   reset();
   readConfiguration(false);
@@ -289,7 +288,6 @@ void Configuration::reset()
   botList_.clear();
   ajaxAgentWhiteList_ = false;
   persistentSessions_ = false;
-  splitScript_ = false;
   maxPlainSessionsRatio_ = 1;
   ajaxPuzzle_ = false;
   sessionIdCookie_ = false;
@@ -540,12 +538,6 @@ bool Configuration::progressiveBoot(const std::string& internalPath) const
   return result;
 }
 
-bool Configuration::splitScript() const
-{
-  READ_LOCK;
-  return splitScript_;
-}
-
 float Configuration::maxPlainSessionsRatio() const
 {
   READ_LOCK;
@@ -685,10 +677,15 @@ void Configuration::registerEntryPoint(const EntryPoint &ep)
 {
   const std::string &path = ep.path();
 
-  assert(path[0] == '/');
+  assert(path.empty() || path[0] == '/');
 
   // The PathSegment in the routing tree where this entrypoint will end up
   PathSegment *pathSegment = &rootPathSegment_;
+
+  if (path.empty()) {
+    pathSegment->entryPoint = &ep;
+    return;
+  }
 
   typedef boost::split_iterator<std::string::const_iterator> spliterator;
   for (spliterator it = spliterator(path.begin() + 1, path.end(),
@@ -780,28 +777,45 @@ void Configuration::setDefaultEntryPoint(const std::string& path)
 }
 
 EntryPointMatch Configuration::matchEntryPoint(const std::string &scriptName,
-                                                 const std::string &path,
-                                                 bool matchAfterSlash) const
+                                               const std::string &path,
+                                               bool matchAfterSlash) const
 {
-  if (!scriptName.empty()) {
-    LOG_DEBUG("matchEntryPoint: matching entry point, scriptName: '" << scriptName << "', path: '" << path << '\'');
-    EntryPointMatch m = matchEntryPoint(EMPTY_STR, scriptName + path, matchAfterSlash);
-    if (m.entryPoint)
-      return m;
-    else
-      return matchEntryPoint(EMPTY_STR, path, matchAfterSlash);
+  if (!(scriptName.empty() || scriptName[0] == '/')) {
+    LOG_ERROR("SCRIPT_NAME should be empty or start with a slash ('/'). If you're using FastCGI, you "
+              "likely misconfigured your web server! "
+              "(SCRIPT_NAME: '" << scriptName << "', PATH_INFO: '" << path << "')");
+    return EntryPointMatch();
   }
-  LOG_DEBUG("matchEntryPoint: matching entry point, path: '" << path << '\'');
+
+  if (!(path.empty() || path[0] == '/')) {
+    LOG_ERROR("PATH_INFO should be empty or start with a slash ('/'). If you're using FastCGI, you "
+              "likely misconfigured your web server! "
+              "(SCRIPT_NAME: '" << scriptName << "', PATH_INFO: '" << path << "')");
+    return EntryPointMatch();
+  }
 
   READ_LOCK;
-  // Only one default entry point.
-  if (entryPoints_.size() == 1
-      && entryPoints_[0].path().empty()) {
-    LOG_DEBUG("matchEntryPoint: only one entry point: matching path '" << path << "' with default entry point");
-    return EntryPointMatch(&entryPoints_[0], 0);
+
+  if (!scriptName.empty()) {
+    LOG_DEBUG("matchEntryPoint: matching entry point, scriptName: '" << scriptName << "', path: '" << path << '\'');
+    auto scriptNameMatch = matchEntryPoint(EMPTY_STR, scriptName + path, matchAfterSlash);
+    if (scriptNameMatch.extraStartIndex < scriptName.size()) {
+      // Discard script name match if the tail of the match is longer than the actual path
+      scriptNameMatch = EntryPointMatch();
+    }
+    auto pathOnlyMatch = matchEntryPoint(EMPTY_STR, path, matchAfterSlash);
+    if (scriptNameMatch < pathOnlyMatch) {
+      if (scriptNameMatch.entryPoint) {
+        // Fix extraStartIndex, so it's an index of path instead of scriptName + path
+        scriptNameMatch.extraStartIndex -= scriptName.size();
+      }
+      return scriptNameMatch;
+    } else {
+      return pathOnlyMatch;
+    }
   }
 
-  assert(path.empty() || path[0] == '/');
+  LOG_DEBUG("matchEntryPoint: matching entry point, path: '" << path << '\'');
 
   const PathSegment *pathSegment = &rootPathSegment_;
 
@@ -884,9 +898,9 @@ EntryPointMatch Configuration::matchEntryPoint(const std::string &scriptName,
       }
     }
     if (it1 == spliterator())
-      result.extra = path.size(); // no extra path
+      result.extraStartIndex = path.size(); // no extra path
     else
-      result.extra = std::distance(path.begin(), it1->begin()) - 1; // there's more
+      result.extraStartIndex = std::distance(path.begin(), it1->begin()) - 1; // there's more
 
     LOG_DEBUG("matchEntryPoint: path '" << path << "' matches dynamic entry point: '" << match->path() << '\'');
     return result;
@@ -1165,8 +1179,6 @@ void Configuration::readApplicationSettings(xml_node<> *app)
     bootstrapConfig_.front().method = Progressive;
   }
 
-  if (progressive)
-    setBoolean(app, "split-script", splitScript_);
   setBoolean(app, "session-id-cookie", sessionIdCookie_);
   setBoolean(app, "cookie-checks", cookieChecks_);
   setBoolean(app, "webgl-detection", webglDetection_);
@@ -1320,6 +1332,10 @@ void Configuration::rereadConfiguration()
 
 void Configuration::readConfiguration(bool silent)
 {
+  if (configurationFile_.empty()) {
+    return;
+  }
+
   std::ifstream s(configurationFile_.c_str(), std::ios::in | std::ios::binary);
 
   if (!s) {
@@ -1408,9 +1424,11 @@ bool Configuration::registerSessionId(const std::string& oldId,
     if (!newId.empty()) {
       std::string socketPath = sessionSocketPath(newId);
 
-      struct stat finfo;
-      if (stat(socketPath.c_str(), &finfo) != -1)
+      namespace fs = boost::filesystem;
+      boost::system::error_code ignored;
+      if (fs::exists(socketPath, ignored)) {
         return false;
+      }
 
       if (oldId.empty()) {
         if (sessionPolicy_ == SharedProcess) {

@@ -4,28 +4,83 @@
  * See the LICENSE file for terms of use.
  */
 #include "Wt/WApplication.h"
+#include "Wt/WBootstrap5Theme.h"
 #include "Wt/WContainerWidget.h"
+#include "Wt/WCssTheme.h"
 #include "Wt/WEnvironment.h"
+#include "Wt/WLogger.h"
 #include "Wt/WPaintDevice.h"
 #include "Wt/WPaintedWidget.h"
 #include "Wt/WPainter.h"
 #include "Wt/WSlider.h"
 #include "Wt/WStringStream.h"
-#include "Wt/WBootstrap5Theme.h"
 
 #include "DomElement.h"
 #include "WebUtils.h"
 
+#include <cmath>
 #include <memory>
 
 /*
  * FIXME: move styling to the theme classes
  */
 namespace Wt {
+LOGGER("WSlider");
 
 const Wt::WFlags<WSlider::TickPosition> WSlider::NoTicks = None;
 const Wt::WFlags<WSlider::TickPosition> WSlider::TicksBothSides
   = WSlider::TickPosition::TicksAbove | WSlider::TickPosition::TicksBelow;
+
+class TickList final : public WWebWidget
+{
+public:
+  TickList(WSlider* slider)
+    : slider_(slider)
+  {
+  }
+
+  void doUpdateDom(DomElement& element, bool all)
+  {
+    if (all) {
+      // Container for all the options
+      DomElement *list = DomElement::createNew(domElementType());
+      list->setId(element.id() + "dl");
+
+      int tickInterval = slider_->tickInterval();
+      int range = slider_->maximum() - slider_->minimum();
+      if (range == 0) {
+        return;
+      }
+
+      if (tickInterval == 0) {
+        tickInterval = range / 2;
+      }
+
+      int numTicks =  range / tickInterval + 1;
+
+      if (numTicks < 1) {
+        return;
+      }
+
+      for (int i = 0; i < numTicks; ++i) {
+        int value = slider_->minimum() + i * tickInterval;
+
+        DomElement *option = DomElement::createNew(DomElementType::OPTION);
+        option->setProperty(Property::Value, std::to_string(value));
+        list->addChild(option);
+      }
+      element.addChild(list);
+    }
+  }
+
+  DomElementType domElementType() const
+  {
+    return DomElementType::DATALIST;
+  }
+
+private:
+  WSlider* slider_ = nullptr;
+};
 
 const char *WSlider::INPUT_SIGNAL = "input";
 
@@ -59,6 +114,8 @@ private:
 
   void onSliderClick(const WMouseEvent& event);
   void onSliderReleased(int u);
+
+  int getClosestNumberByStep(int value, int step);
 };
 
 void PaintedSlider::paintEvent(WPaintDevice *paintDevice)
@@ -182,12 +239,22 @@ void PaintedSlider::updateState()
 
   Orientation o = slider_->orientation();
 
+  // Have 5px margin for the handle VS the slider
+  const int handleOffset = 5;
+  const int widgetLength = o == Orientation::Horizontal ? static_cast<int>(h()) : static_cast<int>(w());
+  int calculatedOffset = -(widgetLength / 2) + slider_->handleWidth() + handleOffset;
+  auto theme = Wt::WApplication::instance()->theme();
+  auto cssTheme = std::dynamic_pointer_cast<WCssTheme>(theme);
+  if (cssTheme && cssTheme->name() == "polished") {
+    calculatedOffset = 0;
+  }
+
   if (o == Orientation::Horizontal) {
     handle_->resize(slider_->handleWidth(), h());
-    handle_->setOffsets(0, Side::Top);
+    handle_->setOffsets(calculatedOffset, Side::Top);
   } else {
     handle_->resize(w(), slider_->handleWidth());
-    handle_->setOffsets(0, Side::Left);
+    handle_->setOffsets(calculatedOffset, Side::Left);
   }
 
   double l = o == Orientation::Horizontal ? w() : h();
@@ -222,6 +289,9 @@ void PaintedSlider::updateState()
   computeD << "var objh = " << handle_->jsRef() << ","
            <<     "objf = " << fill_->jsRef() << ","
            <<     "objb = " << slider_->jsRef() << ","
+           <<     "minVal = " << slider_->minimum() << ","
+           <<     "maxVal = " << slider_->maximum() << ","
+           <<     "stepVal = " << slider_->step() << ","
            <<     "page_u = WT.pageCoordinates(event)." << u << ","
            <<     "widget_page_u = WT.widgetPageCoordinates(objb)." << u << ","
            <<     "pos = page_u - widget_page_u,"
@@ -230,6 +300,20 @@ void PaintedSlider::updateState()
            <<     "if (rtl && horizontal)";
   computeD <<       "pos = " << Utils::round_js_str(l, 3, buf) << " - pos;";
   computeD <<     "var d = pos - down;";
+  // Get max d value and make D relative against the slider's value
+  computeD <<     "let sliderV = Math.abs(maxVal - minVal);";
+  computeD <<     "let scaleFactor = " << Utils::round_js_str(max, 3, buf) << " / sliderV;";
+  computeD <<     "let scaledD = d / scaleFactor;";
+  computeD <<     "let absD = Math.abs(scaledD);";
+  computeD <<     "let signD = scaledD < 0 ? -1 : 1;";
+  computeD <<     "let lowDelta = absD - (absD % stepVal);";
+  computeD <<     "let highDelta = lowDelta + stepVal;";
+  computeD <<     "if (absD- lowDelta < highDelta - absD) {";
+  computeD <<       "d = lowDelta * signD;";
+  computeD <<     "} else {";
+  computeD <<       "d = highDelta *signD;";
+  computeD <<     "}";
+  computeD <<     "d = d * scaleFactor;";
 
   WStringStream mouseMovedJS;
   mouseMovedJS << "var down = obj.getAttribute('down');"
@@ -366,6 +450,8 @@ void PaintedSlider::onSliderReleased(int u)
                                slider_->minimum()
                                + (int)((double)u / pixelsPerUnit + 0.5)));
 
+  v = getClosestNumberByStep(static_cast<int>(v), slider_->step());
+
   // TODO changed() ?
   slider_->sliderMoved().emit(static_cast<int>(v));
 
@@ -392,6 +478,20 @@ void PaintedSlider::updateSliderPosition()
   handle_->setFocus(true);
 }
 
+int PaintedSlider::getClosestNumberByStep(int value, int step)
+{
+  int absValue = std::abs(value);
+  int sign = value < 0 ? -1 : 1;
+  int lowDelta = absValue - (absValue % step);
+  int highDelta = lowDelta + step;
+
+  if (absValue - lowDelta < highDelta - absValue) {
+    return lowDelta * sign;
+  } else {
+    return highDelta * sign;
+  }
+}
+
 WSlider::WSlider()
   : orientation_(Orientation::Horizontal),
     tickInterval_(0),
@@ -403,6 +503,7 @@ WSlider::WSlider()
     minimum_(0),
     maximum_(99),
     value_(0),
+    step_(1),
     sliderMoved_(this, "moved", true)
 {
   resize(150, 50);
@@ -419,6 +520,7 @@ WSlider::WSlider(Orientation orientation)
     minimum_(0),
     maximum_(99),
     value_(0),
+    step_(1),
     sliderMoved_(this, "moved", true)
 {
   if (orientation == Orientation::Horizontal)
@@ -430,6 +532,7 @@ WSlider::WSlider(Orientation orientation)
 WSlider::~WSlider()
 {
   manageWidget(paintedSlider_, std::unique_ptr<PaintedSlider>());
+  manageWidget(tickList_, std::unique_ptr<TickList>());
 }
 
 EventSignal<>& WSlider::input()
@@ -448,42 +551,9 @@ void WSlider::setNativeControl(bool nativeControl)
   preferNative_ = nativeControl;
 }
 
-bool WSlider::nativeControl() const
-{
-  if (preferNative_) {
-    const WEnvironment& env = WApplication::instance()->environment();
-    if ((env.agentIsChrome() &&
-         static_cast<unsigned int>(env.agent()) >=
-         static_cast<unsigned int>(UserAgent::Chrome5))
-        || (env.agentIsSafari() &&
-            static_cast<unsigned int>(env.agent()) >=
-            static_cast<unsigned int>(UserAgent::Safari4))
-        || (env.agentIsOpera() &&
-            static_cast<unsigned int>(env.agent()) >=
-      static_cast<unsigned int>(UserAgent::Opera10))
-  || (env.agentIsGecko() &&
-      static_cast<unsigned int>(env.agent()) >=
-      static_cast<unsigned int>(UserAgent::Firefox5_0)))
-      return true;
-  }
-
-  return false;
-}
-
 void WSlider::resize(const WLength& width, const WLength& height)
 {
-  // Quick transform rotate fix
-  if (orientation() == Orientation::Vertical) {
-    auto app = WApplication::instance();
-    auto bs5Theme = std::dynamic_pointer_cast<WBootstrap5Theme>(app->theme());
-    if (bs5Theme) {
-      WLength w = width, h = height;
-      WLength size = WLength(std::max(w.toPixels(), h.toPixels()));
-      WFormWidget::resize(size, size);
-    }
-  } else {
-    WFormWidget::resize(width, height);
-  }
+  WFormWidget::resize(width, height);
 
   if (paintedSlider_)
     paintedSlider_->sliderResized(width, height);
@@ -508,6 +578,11 @@ void WSlider::setOrientation(Orientation orientation)
 
 void WSlider::setTickPosition(WFlags<TickPosition> tickPosition)
 {
+  if (nativeControl()) {
+    LOG_WARN("setTickLength(): Cannot set the tick length of a native widget.");
+    return;
+  }
+
   tickPosition_ = tickPosition;
 
   if (paintedSlider_)
@@ -520,6 +595,20 @@ void WSlider::setTickInterval(int tickInterval)
 
   if (paintedSlider_)
     paintedSlider_->updateState();
+}
+
+void WSlider::setTickLength(const Wt::WLength& length)
+{
+  if (nativeControl()) {
+    LOG_WARN("setTickLength(): Cannot set the tick length of a native widget.");
+    return;
+  }
+
+  tickLength_ = length;
+
+  if (paintedSlider_) {
+    paintedSlider_->updateState();
+  }
 }
 
 void WSlider::setHandleWidth(int handleWidth)
@@ -569,6 +658,20 @@ void WSlider::setRange(int minimum, int maximum)
   update();
 }
 
+void WSlider::setStep(int step)
+{
+  if (step <= 0) {
+    LOG_WARN("setStep() is called with a bad step value. This must be greater than 0.");
+    return;
+  }
+
+  step_ = step;
+  value_ = getClosestNumberByStep(value(), step);
+
+  update();
+  onChange();
+}
+
 void WSlider::setValue(int value)
 {
   value_ = std::min(maximum_, std::max(minimum_, value));
@@ -590,8 +693,16 @@ void WSlider::signalConnectionsChanged()
 
 void WSlider::onChange()
 {
+  updateSliderProperties();
   valueChanged_.emit(value_);
   sliderMoved_.emit(value_);
+}
+
+void WSlider::updateSliderProperties()
+{
+  if (preferNative_) {
+    scheduleRender();
+  }
 }
 
 DomElementType WSlider::domElementType() const
@@ -614,6 +725,9 @@ void WSlider::render(WFlags<RenderFlag> flags)
         manageWidget(paintedSlider_, std::move(paintedSlider));
         paintedSlider_->sliderResized(width(), height());
       }
+    } else {
+      auto tickList = std::make_unique<TickList>(this);
+      manageWidget(tickList_, std::move(tickList));
     }
 
     setLayoutSizeAware(!useNative);
@@ -625,6 +739,28 @@ void WSlider::render(WFlags<RenderFlag> flags)
 
 void WSlider::updateDom(DomElement& element, bool all)
 {
+  if (preferNative_) {
+    if (orientation() == Orientation::Horizontal) {
+      element.removeProperty(Property::Orient);
+      element.removeProperty(Property::StyleWebkitAppearance);
+    } else {
+      // Firefox
+      element.setProperty(Property::Orient, "vertical");
+      // Chrome/Safari
+      element.setProperty(Property::StyleWebkitAppearance, "slider-vertical");
+    }
+
+    if (tickList_) {
+      // Get parent of widget, since the native version is an `input`,
+      // which is a type that cannot have children.
+      tickList_->doUpdateDom(element, all);
+
+      element.setAttribute("list", id() + "dl");
+    }
+    element.setAttribute("step", std::to_string(step()));
+    element.setAttribute("value", std::to_string(value()));
+  }
+
   if (paintedSlider_)
     paintedSlider_->doUpdateDom(element, all);
   else {
@@ -711,6 +847,12 @@ void WSlider::paintTick(WPainter& painter, int value, int x, int y)
     int y3 = h / 2 + 4;
     int y4 = h - h/4;
 
+    // Apply tick length if not default
+    if (!tickLength().isAuto()) {
+      y1 = y2 - static_cast<int>(tickLength().toPixels());
+      y4 = y3 + static_cast<int>(tickLength().toPixels());
+    }
+
     switch (orientation_) {
     case Orientation::Horizontal:
       if (tickPosition_.test(WSlider::TickPosition::TicksAbove))
@@ -728,4 +870,17 @@ void WSlider::paintTick(WPainter& painter, int value, int x, int y)
   }
 }
 
+int WSlider::getClosestNumberByStep(int value, int step)
+{
+  int absValue = std::abs(value);
+  int sign = value < 0 ? -1 : 1;
+  int lowDelta = absValue - (absValue % step);
+  int highDelta = lowDelta + step;
+
+  if (absValue - lowDelta < highDelta - absValue) {
+    return lowDelta * sign;
+  } else {
+    return highDelta * sign;
+  }
+}
 }

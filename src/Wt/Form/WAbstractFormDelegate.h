@@ -54,9 +54,19 @@ namespace Wt {
 class WT_API WAbstractFormDelegate
 {
 public:
-  /*! \brief Create a form delegate
+  /*! \brief Constructor
    */
   WAbstractFormDelegate();
+
+  WAbstractFormDelegate(const WAbstractFormDelegate&) = delete;
+  WAbstractFormDelegate& operator=(const WAbstractFormDelegate&) = delete;
+
+  WAbstractFormDelegate(WAbstractFormDelegate&&) = delete;
+  WAbstractFormDelegate& operator=(WAbstractFormDelegate&&) = delete;
+
+  /*! \brief Destructor
+   */
+  virtual ~WAbstractFormDelegate();
 
   /*! \brief Create the widget to be used in the View
    */

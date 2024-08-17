@@ -902,7 +902,16 @@ void WWebWidget::setJavaScriptMember(const std::string& name,
   std::vector<OtherImpl::Member>& members = *otherImpl_->jsMembers_;
   int index = indexOfJavaScriptMember(name);
 
-  if (index != -1 && (members[index].value == value))
+  // Bug #12006: For safety always append semicolon
+  std::string terminatedValue = value;
+  // Do not escape the value if it is a "default" placeholder.
+  // A value of "0" (or any value of length 1) is converted to an empty
+  // string in setImplementLayoutSizeAware.
+  if (!terminatedValue.empty() && terminatedValue.back() != ';' && terminatedValue != "0") {
+    terminatedValue += ";";
+  }
+
+  if (index != -1 && (members[index].value == terminatedValue))
     return;
 
   if (value.empty()) {
@@ -914,10 +923,10 @@ void WWebWidget::setJavaScriptMember(const std::string& name,
     if (index == -1) {
       OtherImpl::Member m;
       m.name = name;
-      m.value = value;
+      m.value = terminatedValue;
       members.push_back(m);
     } else {
-      members[index].value = value;
+      members[index].value = terminatedValue;
     }
   }
 
@@ -1328,8 +1337,13 @@ void WWebWidget::updateDom(DomElement& element, bool all)
       else if (flags_.test(BIT_FLEX_BOX_CHANGED) && !display)
         display = Empty;
 
-      if (display)
+      if (display) {
         element.setProperty(Property::StyleDisplay, display);
+
+        if (element.type() == DomElementType::FIELDSET) {
+          element.setProperty(Property::StyleFlexDirection, "column");
+        }
+      }
     } else
       element.setProperty(Property::StyleDisplay, "none");
   }
@@ -1643,6 +1657,13 @@ void WWebWidget::updateDom(DomElement& element, bool all)
     }
   }
 
+  if (transientImpl_) {
+    // Propagate the disabled state to its children #10512
+    if (parent() && parent()->isDisabled()) {
+      propagateSetEnabled(false);
+    }
+  }
+
   if (all || flags_.test(BIT_SELECTABLE_CHANGED)) {
     if (flags_.test(BIT_SET_UNSELECTABLE)) {
       element.addPropertyWord(Property::Class, "unselectable");
@@ -1921,10 +1942,15 @@ void WWebWidget::declareJavaScriptMember(DomElement& element,
     if (name == WT_RESIZE_JS && otherImpl_->resized_) {
       WStringStream combined;
       if (value.length() > 1) {
+        // #12006 & #12143: No semicolon for self invoking functions
+        std::string unterminatedValue = value;
+        if (unterminatedValue.back() == ';') {
+          unterminatedValue.pop_back();
+        }
         combined << name << "=function(s,w,h) {"
                  << WApplication::instance()->javaScriptClass()
                  << "._p_.propagateSize(s,w,h);"
-                 << "(" << value << ")(s,w,h);"
+                 << "(" << unterminatedValue << ")(s,w,h);"
                  << "}";
       } else
         combined << name << "="

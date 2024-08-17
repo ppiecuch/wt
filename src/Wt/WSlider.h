@@ -12,6 +12,7 @@
 
 namespace Wt {
 
+class TickList;
 class PaintedSlider;
 
 /*! \class WSlider Wt/WSlider.h Wt/WSlider.h
@@ -33,6 +34,7 @@ class PaintedSlider;
  * scaleSlider->setValue(10);
  * scaleSlider->setTickInterval(5);
  * scaleSlider->setTickPosition(Wt::WSlider::TicksBothSides);
+ * scaleSlider->setTickLength(Wt::WLength(10));
  * scaleSlider->resize(300, 50);
  * scaleSlider->valueChanged().connect(this, &ThisClass::scaleShape);
  * \endcode
@@ -108,7 +110,7 @@ public:
    * configured using setNativeControl(), this method returns whether
    * a native control is actually being used.
    */
-  bool nativeControl() const;
+  bool nativeControl() const { return preferNative_; }
 
   /*! \brief Sets the slider orientation.
    *
@@ -144,6 +146,8 @@ public:
    * The tick position indicates if and where ticks are placed around the
    * slider groove.
    *
+   * This function has no effect if the native widget is used.
+   *
    * \sa tickPosition(), setTickInterval()
    */
   void setTickPosition(WFlags<TickPosition> tickPosition);
@@ -153,6 +157,23 @@ public:
    * \sa setTickPosition(), setTickInterval()
    */
   WFlags<TickPosition> tickPosition() const { return tickPosition_; }
+
+  /*! \brief Sets the length of the ticks to be drawn.
+   *
+   * This length will be either the width or height when the slider is
+   * oriented vertically or horizontally respectively.
+   *
+   * This function has no effect if the native widget is used.
+   *
+   * \sa tickLength()
+   */
+  void setTickLength(const Wt::WLength& length);
+
+  /*! \brief Returns the tick length.
+   *
+   * \sa setTickLength()
+   */
+  const Wt::WLength& tickLength() const { return tickLength_; }
 
   /*! \brief Sets the slider value.
    *
@@ -206,6 +227,27 @@ public:
    * \sa setMinimum(), setMaximum()
    */
   void setRange(int minimum, int maximum);
+
+  /*! \brief Return the step value.
+   *
+   * The default value of the step is \c 1.
+   *
+   * \sa setStep(int)
+   */
+  int step() const { return step_; }
+
+  /*! \brief Sets the step value.
+   *
+   * This is a positive integer value that indicates by which step the
+   * slider moves between the minimum and maximum.
+   *
+   * It is not necessary that the slider's range can be neatly divided
+   * by the step value. Meaning a range of 50 (0 - 50), with a step of
+   * 7, is possible, but will never reach the maximum value.
+   *
+   * \sa step()
+   */
+  void setStep(int step);
 
   /*! \brief %Signal emitted when the user has changed the value of the
    *         slider.
@@ -288,19 +330,24 @@ private:
   Orientation          orientation_;
   int                  tickInterval_;
   WFlags<TickPosition> tickPosition_;
+  WLength tickLength_;
   bool                 preferNative_, changed_, changedConnected_, inputConnected_;
   int                  handleWidth_;
 
   int                  minimum_, maximum_;
   int                  value_;
+  int                  step_;
 
   Signal<int>          valueChanged_;
   JSignal<int>         sliderMoved_;
 
   std::unique_ptr<PaintedSlider> paintedSlider_;
+  std::unique_ptr<TickList> tickList_;
 
   void update();
   void onChange();
+  void updateSliderProperties();
+  int getClosestNumberByStep(int value, int step);
 
   friend class PaintedSlider;
 };

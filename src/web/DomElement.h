@@ -37,6 +37,7 @@ enum class Property { InnerHTML, AddedInnerHTML,
                       TabIndex, Label,
                       Class,
                       Placeholder,
+                      Orient,
                       Style,
                       StyleWidthExpression,
                       StylePosition,
@@ -81,10 +82,12 @@ enum class Property { InnerHTML, AddedInnerHTML,
                       StylePageBreakBefore, StylePageBreakAfter,
                       StyleZoom,
                       StyleVisibility, StyleDisplay,
+                      StyleWebkitAppearance,
 
                       /* CSS 3 */
                       StyleBoxSizing,
                       StyleFlex,
+                      StyleFlexDirection,
                       StyleFlexFlow,
                       StyleAlignSelf,
                       StyleJustifyContent,
@@ -487,7 +490,11 @@ public:
 
   /*! \brief Returns the name for a CSS property, as a string.
    */
-  static const std::string& cssName(Property property);
+  static std::string cssName(Property property);
+
+  /*! \brief Returns the name for a JavaScript DOM style property, as a string.
+   */
+  static std::string cssJavaScriptName(Property property);
 
   /*! \brief Returns whether a paritcular element is by default inline.
    */

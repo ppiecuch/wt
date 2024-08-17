@@ -245,16 +245,16 @@ void WServer::schedule(std::chrono::steady_clock::duration duration,
 
 std::string WServer::prependDefaultPath(const std::string& path)
 {
-  assert(!configuration().defaultEntryPoint().empty() &&
-         configuration().defaultEntryPoint()[0] == '/');
-  if (path.empty())
-    return configuration().defaultEntryPoint();
-  else if (path[0] != '/') {
-    const std::string &defaultPath = configuration().defaultEntryPoint();
-    if (defaultPath[defaultPath.size() - 1] != '/')
-      return defaultPath + "/" + path;
-    else
-      return defaultPath + path;
+  const std::string &defaultEntryPoint = configuration().defaultEntryPoint();
+  if (path.empty()) {
+    return defaultEntryPoint;
+  } else if (path[0] != '/') {
+    if (defaultEntryPoint.empty() ||
+        defaultEntryPoint[defaultEntryPoint.size() - 1] != '/') {
+      return defaultEntryPoint + "/" + path;
+    } else {
+      return defaultEntryPoint + path;
+    }
   } else
     return path;
 }
@@ -270,9 +270,20 @@ void WServer::addResource(WResource *resource, const std::string& path)
 {
   bool success = configuration().tryAddResource(
         EntryPoint(resource, prependDefaultPath(path)));
-  if (success)
+  if (!success) {
+    WString error(Wt::utf8("WServer::addResource() error: "
+                           "a static resource was already deployed on path '{1}'"));
+    throw WServer::Exception(error.arg(path).toUTF8());
+  }
+}
+
+void WServer::addResource(const std::shared_ptr<WResource> &resource,
+                          const std::string &path)
+{
+  bool success = configuration().tryAddResource(EntryPoint(resource, prependDefaultPath(path)));
+  if (success) {
     resource->setInternalPath(path);
-  else {
+  } else {
     WString error(Wt::utf8("WServer::addResource() error: "
                            "a static resource was already deployed on path '{1}'"));
     throw WServer::Exception(error.arg(path).toUTF8());

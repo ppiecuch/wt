@@ -7,6 +7,9 @@
 #include <fstream>
 #include <cstring>
 
+#include "Wt/Exception/WInvalidFormatException.h"
+#include "Wt/Exception/WInvalidOperationException.h"
+
 #include "Wt/WLocale.h"
 #include "Wt/WLogger.h"
 #include "Wt/WMessageResources.h"
@@ -96,8 +99,8 @@ struct CExpressionParser : grammar<CExpressionParser>
       term
         = factor[term.value = arg1]
           >> *( ('*' >> factor[term.value *= arg1])
-              | ('/' >> factor[term.value /= arg1])
-              | ('%' >> factor[term.value %= arg1])
+              | ('/' >> factor[bind(&CExpressionParser::safe_div)(self, term.value, arg1)])
+              | ('%' >> factor[bind(&CExpressionParser::safe_rem)(self, term.value, arg1)])
             )
         ;
 
@@ -209,6 +212,24 @@ private:
 
   void or_op(::int64_t &x, ::int64_t y) const { x = x || y; }
   void and_op(::int64_t &x, ::int64_t y) const { x = x && y; }
+
+  void safe_div(::int64_t& result, ::int64_t y) const
+  {
+    if (y != 0) {
+      result = result / y;
+    } else {
+      throw WInvalidOperationException("WMessageResources::evalPluralCase(): Cannot divide by 0");
+    }
+  }
+
+  void safe_rem(::int64_t& result, ::int64_t y) const
+  {
+    if (y != 0) {
+      result = result % y;
+    } else {
+      throw WInvalidOperationException("WMessageResources::evalPluralCase(): Cannot modulo by 0");
+    }
+  }
 
   void set_result(int result) const { result_ = result; }
 private :
@@ -614,7 +635,14 @@ int WMessageResources::evalPluralCase(const std::string &expression,
   CExpressionParser::ParseState state;
   CExpressionParser p(n, result, state);
   std::string tmp = expression;
-  parse(tmp.begin(), tmp.end(), p, space_p);
+  if (tmp.length() > 1000) {
+    // This is a temporary catch to #12374
+    throw Wt::WInvalidFormatException("WMessageResources::evalPluralCase(): The input it too long");
+  }
+  auto v = parse(tmp.begin(), tmp.end(), p, space_p);
+  if (!v.full) {
+    throw Wt::WInvalidFormatException("WMessageResources::evalPluralCase(): The parser encountered an invalid format");
+  }
 #endif // WT_NO_SPIRIT
 
   return result;

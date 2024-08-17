@@ -47,9 +47,9 @@ namespace Wt {
  * WApplication::instance() does not return 0), the date strings
  * can be localized by overriding the default values for
  * the localized string keys in the resource bundles of the WApplication:
- * - Short day names: Wt.WDate.Mon through Wt.WDate.Sun
+ * - Short day names: Wt.WDate.3.Mon through Wt.WDate.3.Sun
  * - Long day names: Wt.WDate.Monday through Wt.WDate.Sunday
- * - Short month names: Wt.WDate.Jan through Wt.WDate.Dec
+ * - Short month names: Wt.WDate.3.Jan through Wt.WDate.3.Dec
  * - Long month names: Wt.WDate.January through Wt.WDate.December
  *
  * If the thread using a WDate is not bound to a WApplication (i.e.
@@ -283,9 +283,17 @@ public:
    *  <tr><td>'MM': MM, 'd': d, 'yyyy': yyyy</td><td>MM: 08, d: 3, yyyy: 2007</td></tr>
    * </table>
    *
+   * The \p localizedString allows for the potential strings that are
+   * created to be localized or not.
+   *
+   * E.g. If "ddd" is part of the format, the abbreviated day is used.
+   * If \p localizedString is true, and if the abbreviations are
+   * defined in a resource bundle (overwriting the default
+   * "Wt.WDate.3.Mon" for example), they will be used.
+   *
    * \sa fromString(const WString& value, const WString& format)
    */
-  WT_USTRING toString(const WT_USTRING& format) const;
+  WT_USTRING toString(const WT_USTRING& format, bool localizedString = true) const;
 
   std::chrono::system_clock::time_point toTimePoint() const;
 
@@ -363,12 +371,12 @@ public:
    * "Mon" (1),<br> "Tue" (2),<br> "Wed" (3),<br>
    * "Thu" (4),<br> "Fri" (5),<br> "Sat" (6),<br> "Sun" (7).
    *
-   * The result is affected by localization using the "Wt.WDate.Mon" to
-   * "Wt.WDate.Sun" keys.
+   * The result is affected by localization using the "Wt.WDate.3.Mon"
+   * to "Wt.WDate.3.Sun" keys.
    *
    * \sa longDayName()
    */
-  static Wt::WString shortDayName(int weekday, bool localized = true);
+  static Wt::WString shortDayName(int weekday, bool localizedString = true);
 
   /*! \brief Returns the short month name.
    *
@@ -378,12 +386,12 @@ public:
    * "Jul" (7),<br> "Aug" (8),<br> "Sep" (9),<br>
    * "Oct" (10),<br> "Nov" (11),<br> "Dec" (12)<br>.
    *
-   * The result is affected by localization using the "Wt.WDate.Jan" to
-   * "Wt.WDate.Dec" keys.
+   * The result is affected by localization using the "Wt.WDate.3.Jan"
+   * to "Wt.WDate.3.Dec" keys.
    *
    * \sa longMonthName()
    */
-  static Wt::WString shortMonthName(int month, bool localized = true);
+  static Wt::WString shortMonthName(int month, bool localizedString = true);
 
   /*! \brief Returns the long day name.
    *
@@ -396,7 +404,7 @@ public:
    *
    * \sa shortDayName()
    */
-  static Wt::WString longDayName(int weekday, bool localized = true);
+  static Wt::WString longDayName(int weekday, bool localizedString = true);
 
   /*! \brief Returns the long month name.
    *
@@ -411,7 +419,7 @@ public:
    *
    * \sa shortDayName()
    */
-  static Wt::WString longMonthName(int month, bool localized = true);
+  static Wt::WString longMonthName(int month, bool localizedString = true);
 
   static std::string extFormat(const WT_USTRING& format);
 
@@ -444,7 +452,7 @@ private:
                                             const WString& format);
 
   bool writeSpecial(const std::string& f, unsigned& i, WStringStream& result,
-                    bool localized = true)
+                    bool localizedString = true)
     const;
 
   static int parseShortMonthName(const std::string& v, unsigned& pos);

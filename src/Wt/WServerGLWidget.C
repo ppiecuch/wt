@@ -21,7 +21,10 @@
 #endif
 
 #include <GL/glew.h>
+
+#ifndef APPLE_GL
 #include <GL/gl.h>
+#endif
 
 #ifdef X11_GL
 #include <X11/Xlib.h>
@@ -1795,6 +1798,7 @@ void WServerGLWidget::render(const std::string& jsRef, WFlags<RenderFlag> flags)
       raster_->setPixel(j, renderHeight_-1-i, pixel);
     }
   }
+  raster_->done();
   std::stringstream sstream;
   raster_->write(sstream);
   std::string tmp = sstream.str();

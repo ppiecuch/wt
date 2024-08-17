@@ -3379,7 +3379,7 @@ void WCartesianChart::renderLegendIcon(WPainter& painter,
     painter.drawLine(pos.x(), pos.y() + offset, pos.x() + 16, pos.y() + offset);
     painter.setShadow(shadow);
   }
-    // no break;
+  WT_FALLTHROUGH
   case SeriesType::Point: {
     WPainterPath path;
     drawMarker(series, path);
@@ -3858,7 +3858,7 @@ void WCartesianChart::renderAxis(WPainter& painter, const WAxis& axis,
       }
       clipRect = WRectF(0.0, area.top(), isYAxis ? width_ : height_, h);
     } else {
-      clipRect = WRectF(area.left(), 0.0, area.width(), isYAxis ? height_ : width_);
+      clipRect = WRectF(area.left(), 0.0, area.width(), isYAxis ? width_ : height_);
     }
     if (properties == AxisProperty::Labels) {
       clipRect = WRectF(clipRect.left() - 1, clipRect.top() - 1,

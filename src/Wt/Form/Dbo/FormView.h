@@ -49,20 +49,20 @@ public:
    */
   void setFormModel(std::shared_ptr<FormModel<C>> model)
   {
-    model_ = model;
+    model_ = std::move(model);
 
     C dummy;
 
     // Automatically generate the form delegates
-    ViewAction action(model->session(), model.get(), formDelegates_);
+    ViewAction action(model_->session(), model_.get(), formDelegates_);
     dummy.persist(action);
 
-    for (const Wt::WFormModel::Field& f : model->fields()) {
+    for (const Wt::WFormModel::Field& f : model_->fields()) {
       setFormWidget(f, formWidget(f));
-      model->setValidator(f, validator(f));
+      model_->setValidator(f, validator(f));
     }
 
-    updateView(model.get());
+    updateView(model_.get());
   }
 
   /*! \brief Sets a custom form delegate
@@ -86,6 +86,18 @@ public:
     } else {
       formDelegates_[field] = std::move(delegate);
     }
+  }
+
+  /*! \brief Creates a form widget
+   *
+   * This method is to ensure that the correct widget is used in the form for the given
+   * field, i.e. the widget defined by the form delegate.
+   *
+   * \sa WAbstractFormDelegate::createFormWidget
+   */
+  std::unique_ptr<Wt::WWidget> createFormWidget(Wt::WFormModel::Field field) override
+  {
+    return formWidget(field);
   }
 
   /*! \brief Updates a value in the Model
@@ -254,7 +266,7 @@ private:
     return nullptr;
   }
 
-  /*! \brief Gets the form deleate
+  /*! \brief Gets the form delegate
    */
   std::shared_ptr<Wt::Form::WAbstractFormDelegate> delegate(Wt::WFormModel::Field field)
   {

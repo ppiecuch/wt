@@ -12,11 +12,11 @@ INSTALL_FILES(/include/Wt "^AsioWrapper$")
 #  DESTINATION include
 #)
 
-IF (ASCIIDOC_FOUND)
+if(ASCIIDOCTOR_FOUND)
   ASCIIDOC_FILE(wt-tutorial
-    ${CMAKE_SOURCE_DIR}/doc/tutorial/wt.doc
-    ${CMAKE_SOURCE_DIR}/doc/tutorial/wt.html)
-ENDIF (ASCIIDOC_FOUND)
+    ${WT_SOURCE_DIR}/doc/tutorial/wt.adoc
+    ${WT_SOURCE_DIR}/doc/tutorial/wt.html)
+endif()
 
 IF (WT_DATE_TZ_USE_DATE)
   ADD_SUBDIRECTORY(Date)

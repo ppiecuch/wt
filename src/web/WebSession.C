@@ -144,7 +144,7 @@ WebSession::WebSession(WebController *controller,
    * Obtain the applicationName_ as soon as possible for log().
    */
   if (request)
-    applicationUrl_ = request->scriptName();
+    applicationUrl_ = request->fullEntryPointPath();
   else
     applicationUrl_ = "/";
 
@@ -169,8 +169,15 @@ WebSession::WebSession(WebController *controller,
   if (controller_->configuration().sessionIdCookie()) {
     sessionIdCookie_ = WRandom::generateId();
     sessionIdCookieChanged_ = true;
-    renderer().setCookie("Wt" + sessionIdCookie_, "1", Wt::WDateTime(), "", "",
-                         env_->urlScheme() == "https");
+
+    Http::Cookie cookie("Wt" + sessionIdCookie_, "1");
+    cookie.setSecure(env_->urlScheme() == "https");
+#ifndef WT_TARGET_JAVA
+    cookie.setSameSite(Http::Cookie::SameSite::Strict);
+#else
+    cookie.setHttpOnly(true);
+#endif
+    renderer().setCookie(cookie);
   }
 }
 
@@ -428,12 +435,13 @@ void WebSession::init(const WebRequest& request)
     bookmarkUrl_ = applicationUrl_;
   }
 
-  std::string path = request.pathInfo();
+  auto extraPathInfo = request.extraPathInfo().to_string();
+  std::string path = extraPathInfo;
   if (path.empty() && hashE)
     path = *hashE;
 
   env_->setInternalPath(path);
-  pagePathInfo_ = request.pathInfo();
+  pagePathInfo_ = std::move(extraPathInfo);
 
   // Cache document root
   docRoot_ = getCgiValue("DOCUMENT_ROOT");
@@ -891,14 +899,17 @@ bool WebSession::Handler::haveLock() const
 
 void WebSession::Handler::unlock()
 {
-#ifndef WT_TARGET_JAVA
   if (haveLock()) {
+#ifndef WT_TARGET_JAVA
     Utils::erase(session_->handlers_, this);
 #ifdef WT_THREADED
     lock_.unlock();
 #endif // WT_THREADED
-  }
 #endif // WT_TARGET_JAVA
+#ifdef WT_TARGET_JAVA
+    session_->mutex().unlock();
+#endif
+  }
 }
 
 void WebSession::Handler::init()
@@ -1653,17 +1664,11 @@ void WebSession::handleRequest(Handler& handler)
         if (!app_) {
           const std::string *resourceE = request.getParameter("resource");
 
-          if (handler.response()->responseType() ==
-              WebResponse::ResponseType::Script) {
-            if (!request.getParameter("skeleton")) {
-              env_->enableAjax(request);
+          if (handler.response()->responseType() == WebResponse::ResponseType::Script) {
+            env_->enableAjax(request);
 
-              if (!start(handler.response()))
-                throw WException("Could not start application.");
-            } else {
-              serveResponse(handler);
-              return;
-            }
+            if (!start(handler.response()))
+              throw WException("Could not start application.");
           } else if (requestForResource && resourceE && *resourceE == "blank") {
             handler.response()->setContentType("text/html");
             handler.response()->out() <<
@@ -2396,17 +2401,15 @@ void WebSession::notify(const WEvent& event)
         throw WException("Script id mismatch");
       }
 
-      if (!request.getParameter("skeleton")) {
-        if (!env_->ajax()) {
-          env_->enableAjax(request);
-          app_->enableAjax();
-          if (env_->internalPath().length() > 1)
-            changeInternalPath(env_->internalPath(), handler.response());
-        } else {
-          const std::string *hashE = request.getParameter("_");
-          if (hashE)
-            changeInternalPath(*hashE, handler.response());
-        }
+      if (!env_->ajax()) {
+        env_->enableAjax(request);
+        app_->enableAjax();
+        if (env_->internalPath().length() > 1)
+          changeInternalPath(env_->internalPath(), handler.response());
+      } else {
+        const std::string *hashE = request.getParameter("_");
+        if (hashE)
+          changeInternalPath(*hashE, handler.response());
       }
 
       render(handler);
@@ -2427,9 +2430,9 @@ void WebSession::notify(const WEvent& event)
 
       WResource *resource = nullptr;
       if (!requestE) {
-        if (!request.pathInfo().empty())
+        if (!request.extraPathInfo().empty())
           resource = app_->decodeExposedResource
-            ("/path/" + Utils::prepend(request.pathInfo(), '/'));
+            ("/path/" + Utils::prepend(request.extraPathInfo().to_string(), '/'));
 
         if (!resource && hashE)
           resource = app_->decodeExposedResource
@@ -2624,6 +2627,7 @@ void WebSession::notify(const WEvent& event)
             && handler.response()->responseType() ==
                WebResponse::ResponseType::Page
             && (!env_->ajax() ||
+                suspended() ||
                 !controller_->configuration().reloadIsNewSession())) {
           app_->domRoot()->setRendered(false);
 
@@ -2631,8 +2635,8 @@ void WebSession::notify(const WEvent& event)
 
           if (hashE)
             changeInternalPath(*hashE, handler.response());
-          else if (!handler.request()->pathInfo().empty()) {
-            changeInternalPath(handler.request()->pathInfo(),
+          else if (!handler.request()->extraPathInfo().empty()) {
+            changeInternalPath(handler.request()->extraPathInfo().to_string(),
                                handler.response());
           } else
             changeInternalPath("", handler.response());
@@ -2749,6 +2753,8 @@ EventType WebSession::getEventType(const WEvent& event) const
       } else
         return EventType::Other;
     }
+    // FIXME: suspicious fallthrough
+    WT_FALLTHROUGH
   default:
     return EventType::Other;
   }
@@ -2764,8 +2770,8 @@ bool WebSession::resourceRequest(const WebRequest& request) const
     if (requestE && *requestE == "resource" && resourceE) {
       return true;
     } else if (!requestE && app_) { // check if resource is deployed on internal path
-      if (!request.pathInfo().empty() &&
-          app_->decodeExposedResource("/path/" + Utils::prepend(request.pathInfo(), '/')) != nullptr)
+      if (!request.extraPathInfo().empty() &&
+          app_->decodeExposedResource("/path/" + Utils::prepend(request.extraPathInfo().to_string(), '/')) != nullptr)
         return true;
 
       const std::string *hashE = request.getParameter("_");
@@ -2827,7 +2833,7 @@ void WebSession::serveError(int status, Handler& handler, const std::string& e)
 void WebSession::serveResponse(Handler& handler)
 {
   if (handler.response()->responseType() == WebResponse::ResponseType::Page) {
-    pagePathInfo_ = handler.request()->pathInfo();
+    pagePathInfo_ = handler.request()->extraPathInfo().to_string();
     const std::string *wtdE = handler.request()->getParameter("wtd");
     if (wtdE && *wtdE == sessionId_)
       sessionIdInUrl_ = true;
@@ -2844,8 +2850,7 @@ void WebSession::serveResponse(Handler& handler)
      * In any case, flush the style request when we are serving a new
      * page (without Ajax) or the main script (with Ajax).
      */
-    if (handler.response()->responseType() == WebResponse::ResponseType::Script
-        && !handler.request()->getParameter("skeleton")) {
+    if (handler.response()->responseType() == WebResponse::ResponseType::Script) {
 #ifndef WT_TARGET_JAVA
       if (bootStyleResponse_) {
         renderer_.serveLinkedCss(*bootStyleResponse_);
@@ -3115,15 +3120,22 @@ void WebSession::generateNewSessionId()
   LOG_INFO("new session id for " << oldId);
 
   if (!useUrlRewriting()) {
-    std::string cookieName = env_->deploymentPath();
-    renderer().setCookie(cookieName, sessionId_, WDateTime(), "", "", env_->urlScheme() == "https");
+    Http::Cookie cookie(env_->deploymentPath(), sessionId_);
+    cookie.setSecure(env_->urlScheme() == "https");
+#ifndef WT_TARGET_JAVA
+    cookie.setSameSite(Http::Cookie::SameSite::Strict);
+#else
+    cookie.setHttpOnly(true);
+#endif
+    renderer().setCookie(cookie);
   }
 
   if (controller_->configuration().sessionIdCookie()) {
     sessionIdCookie_ = WRandom::generateId();
     sessionIdCookieChanged_ = true;
-    renderer().setCookie("Wt" + sessionIdCookie_, "1", WDateTime(), "", "",
-                         env_->urlScheme() == "https");
+    Http::Cookie cookie("Wt" + sessionIdCookie_, "1");
+    cookie.setSecure(env_->urlScheme() == "https");
+    renderer().setCookie(cookie);
   }
 
   if (controller_->server()->dedicatedSessionProcess()) {

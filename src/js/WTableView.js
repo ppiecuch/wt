@@ -106,12 +106,24 @@ WT_DECLARE_WT_MEMBER(
       return item.el.classList.contains(selectedClass);
     }
 
+    function indexOfElementInParent(element) {
+      let i = 0;
+      for (const e of element.parentNode.childNodes) {
+        if (e.isEqualNode(element)) {
+          return i;
+        }
+        i++;
+      }
+
+      return -1;
+    }
+
     function getItem(event) {
       let columnId = -1, rowIdx = -1, selected = false, drop = false, ele = null;
 
       let t = WT.target(event);
 
-      while (t) {
+      while (t && typeof t.classList !== "undefined") {
         if (t.classList.contains("Wt-tv-contents")) {
           break;
         } else if (t.classList.contains("Wt-tv-c")) {
@@ -124,7 +136,7 @@ WT_DECLARE_WT_MEMBER(
           ele = t;
           t = t.parentNode;
           columnId = t.className.split(" ")[0].substring(7) * 1;
-          rowIdx = indexOf(t);
+          rowIdx = indexOfElementInParent(ele, t);
           break;
         }
         t = t.parentNode;
@@ -135,18 +147,6 @@ WT_DECLARE_WT_MEMBER(
 
     function rowHeight() {
       return WT.pxself(contentsContainer.firstChild, "lineHeight");
-    }
-
-    function indexOf(child) {
-      const plist = child.parentNode.childNodes;
-
-      for (let i = 0, il = plist.length; i < il; ++i) {
-        if (plist[i] === child) {
-          return i;
-        }
-      }
-
-      return -1;
     }
 
     function resizeColumn(header, delta) {
@@ -427,6 +427,9 @@ WT_DECLARE_WT_MEMBER(
       }
 
       const item = getItem(event);
+      if (item.ele === null) {
+        return;
+      }
 
       if (!item.selected && item.drop && itemDropsEnabled) {
         if (action === "drop") {
@@ -493,8 +496,8 @@ WT_DECLARE_WT_MEMBER(
         }
 
         let col = item.el.parentNode;
-        const rowi = indexOf(item.el),
-          coli = indexOf(col),
+        const rowi = indexOfElementInParent(item.el),
+          coli = indexOfElementInParent(col),
           cols = col.parentNode.childNodes.length,
           rows = col.childNodes.length,
           back = event.shiftKey;
@@ -549,8 +552,8 @@ WT_DECLARE_WT_MEMBER(
         }
 
         let col = item.el.parentNode,
-          rowi = indexOf(item.el),
-          coli = indexOf(col);
+          rowi = indexOfElementInParent(item.el),
+          coli = indexOfElementInParent(col);
         const cols = col.parentNode.childNodes.length,
           rows = col.childNodes.length;
 

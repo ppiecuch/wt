@@ -121,6 +121,8 @@ Wt/WDefaultLoadingIndicator.h Wt/WDefaultLoadingIndicator.C
 Wt/WDialog.h Wt/WDialog.C
 Wt/WDoubleSpinBox.h Wt/WDoubleSpinBox.C
 Wt/WDoubleValidator.h Wt/WDoubleValidator.C
+Wt/WEmailEdit.h Wt/WEmailEdit.C
+Wt/WEmailValidator.h Wt/WEmailValidator.C
 Wt/WEnvironment.h Wt/WEnvironment.C
 Wt/WEvent.h Wt/WEvent.C
 Wt/WException.h Wt/WException.C
@@ -291,6 +293,7 @@ Wt/Auth/PasswordStrengthValidator.h Wt/Auth/PasswordStrengthValidator.C
 Wt/Auth/PasswordVerifier.h Wt/Auth/PasswordVerifier.C
 Wt/Auth/RegistrationModel.h Wt/Auth/RegistrationModel.C
 Wt/Auth/RegistrationWidget.h Wt/Auth/RegistrationWidget.C
+Wt/Auth/ResendEmailVerificationWidget.h Wt/Auth/ResendEmailVerificationWidget.C
 Wt/Auth/Token.h Wt/Auth/Token.C
 Wt/Auth/UpdatePasswordWidget.h Wt/Auth/UpdatePasswordWidget.C
 Wt/Auth/User.h Wt/Auth/User.C
@@ -329,6 +332,8 @@ Wt/Core/observable.hpp Wt/Core/observable.cpp
 Wt/Core/observing_ptr.hpp Wt/Core/observing_ptr.cpp
 Wt/cpp17/any.hpp Wt/cpp17/any/any.hpp
 Wt/cpp20/date.hpp Wt/cpp20/tz.hpp
+Wt/Exception/WInvalidFormatException.h Wt/Exception/WInvalidFormatException.C
+Wt/Exception/WInvalidOperationException.h Wt/Exception/WInvalidOperationException.C
 Wt/Form/WAbstractFormDelegate.h Wt/Form/WAbstractFormDelegate.C
 Wt/Form/WFormDelegate.h Wt/Form/WFormDelegate.C
 Wt/Json/Array.h Wt/Json/Array.C
@@ -338,6 +343,7 @@ Wt/Json/Serializer.h Wt/Json/Serializer.C
 Wt/Json/Value.h Wt/Json/Value.C
 Wt/Http/HttpUtils.h Wt/Http/HttpUtils.C
 Wt/Http/Client.h Wt/Http/Client.C
+Wt/Http/Cookie.h Wt/Http/Cookie.C
 Wt/Http/Message.h Wt/Http/Message.C
 Wt/Http/Request.h Wt/Http/Request.C
 Wt/Http/Response.h Wt/Http/Response.C
@@ -367,12 +373,14 @@ web/md5.h web/md5.c
 web/sha1.h web/sha1.c
 web/CgiParser.h web/CgiParser.C
 web/Configuration.h web/Configuration.C
+web/DateUtils.h web/DateUtils.C
 web/DomElement.h web/DomElement.C
 web/EntryPoint.h web/EntryPoint.C
 web/EscapeOStream.h web/EscapeOStream.C
 web/FileServe.h web/FileServe.C
 web/ColorUtils.h web/ColorUtils.C
 web/ImageUtils.h web/ImageUtils.C
+web/InfraUtils.h web/InfraUtils.C
 web/RefEncoder.h web/RefEncoder.C
 web/SoundManager.h web/SoundManager.C
 web/WebController.h web/WebController.C
@@ -470,19 +478,9 @@ ELSEIF("${WT_WRASTERIMAGE_IMPLEMENTATION}" STREQUAL "Direct2D")
   SET(libsources ${libsources} Wt/WRasterImage.h Wt/WRasterImage-d2d1.C)
 ENDIF("${WT_WRASTERIMAGE_IMPLEMENTATION}" STREQUAL "GraphicsMagick")
 
-IF(HAVE_GL)
-  SET(libsources ${libsources} Wt/WServerGLWidget.h Wt/WServerGLWidget.C)
-  IF(NOT USE_SYSTEM_GLEW)
-    ADD_DEFINITIONS(-DGLEW_STATIC)
-    SET(libsources
-      ${libsources}
-      3rdparty/glew-1.10.0/include/GL/glew.h
-      3rdparty/glew-1.10.0/include/GL/glxew.h
-      3rdparty/glew-1.10.0/include/GL/wglew.h
-      3rdparty/glew-1.10.0/src/glew.c
-    )
-  ENDIF(NOT USE_SYSTEM_GLEW)
-ENDIF(HAVE_GL)
+if(WT_USE_OPENGL)
+  list(APPEND libsources Wt/WServerGLWidget.h Wt/WServerGLWidget.C)
+endif()
 
 SET(WT_FONTSUPPORT_SIMPLE false)
 SET(WT_FONTSUPPORT_PANGO false)
@@ -555,6 +553,7 @@ TARGET_LINK_LIBRARIES(wt
     ${WT_SAML_LIBS}
     ${WT_MATH_LIBRARY}
     ${RT_LIBRARY}
+    ${ATOMICS_LIBRARIES}
     )
 
 IF(WT_HAS_SAML)
@@ -625,15 +624,17 @@ ELSE(HAVE_SSL)
   ENDIF(ENABLE_SSL)
 ENDIF(HAVE_SSL)
 
-IF(HAVE_HARU)
-  TARGET_LINK_LIBRARIES(wt PRIVATE ${HARU_LIBRARIES})
-  INCLUDE_DIRECTORIES(${HARU_INCLUDE_DIRS})
-ELSE(HAVE_HARU)
-  MESSAGE("** Disabling PDF support (WPdfImage, WPdfRenderer): requires libharu.")
-  IF(ENABLE_HARU)
-    MESSAGE("   Indicate the location of your haru library using -DHARU_PREFIX=...")
-  ENDIF(ENABLE_HARU)
-ENDIF(HAVE_HARU)
+if(HAVE_HARU)
+  # Even though WPdfImage.h exposes <hpdf.h>, we mark it as private here, because most users of Wt don't need it.
+  # We don't want to include it in the INTERFACE_LINK_LIBRARIES in the generated wt-target-wt.cmake file, since
+  # FindHPDF.cmake is not a standard find module.
+  target_link_libraries(wt PRIVATE HPDF::HPDF)
+else()
+  message("** Disabling PDF support (WPdfImage, WPdfRenderer): requires libharu.")
+  if(ENABLE_HARU)
+    message("   Indicate the location of your haru library using -DHARU_PREFIX=...")
+  endif()
+endif()
 
 IF("${WT_WRASTERIMAGE_IMPLEMENTATION}" STREQUAL "GraphicsMagick")
   TARGET_LINK_LIBRARIES(wt PRIVATE ${GM_LIBRARIES})
@@ -645,15 +646,11 @@ ELSE("${WT_WRASTERIMAGE_IMPLEMENTATION}" STREQUAL "GraphicsMagick")
   MESSAGE("** Disabling raster image support (WRasterImage): set WT_WRASTERIMAGE_IMPLEMENTATION to GraphicsMagick or Direct2D.")
 ENDIF("${WT_WRASTERIMAGE_IMPLEMENTATION}" STREQUAL "GraphicsMagick")
 
-IF(HAVE_GL)
-  INCLUDE_DIRECTORIES(${GL_INCLUDE_DIRS})
-  IF(USE_SYSTEM_GLEW)
-    TARGET_LINK_LIBRARIES(wt PRIVATE GLEW)
-  ENDIF(USE_SYSTEM_GLEW)
-  TARGET_LINK_LIBRARIES(wt PRIVATE ${GL_LIBRARIES})
-ELSE(HAVE_GL)
+if(WT_USE_OPENGL)
+  target_link_libraries(wt PRIVATE OpenGL::GL GLEW::GLEW)
+else()
   MESSAGE("** Disabling server-side opengl rendering for WGLWidget: requires gl, glew and WRasterImage (GraphicsMagick or Direct2D).")
-ENDIF(HAVE_GL)
+endif()
 
 IF(WT_FONTSUPPORT_SIMPLE)
   ADD_DEFINITIONS(-DWT_FONTSUPPORT_SIMPLE)

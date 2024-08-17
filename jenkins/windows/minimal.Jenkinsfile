@@ -20,8 +20,11 @@ pipeline {
             dir 'jenkins/windows'
             filename 'Dockerfile'
             label 'win'
-            additionalBuildArgs '--memory 2G --target minimal'
-            args "--cpu-count 8 --memory 8G"
+            // Note: installing build tools fails with isolation=process, so we don't use it here
+            additionalBuildArgs '--isolation=hyperv --memory 2G --target minimal --build-arg VCVARS_VER=14.3'
+            // We have build issues when using Hyper-V isolation with older Visual Studio versions, see:
+            // https://developercommunity.visualstudio.com/t/lnk1318-unexpected-pdb-error-when-building-from-a/607325
+            args "--isolation=process"
           }
         }
         axes {
@@ -35,9 +38,28 @@ pipeline {
             steps {
               dir("build-shared-${env.SHARED_LIBS}") {
                 bat """
-                      call "C:\\BuildTools\\VC\\Auxiliary\\Build\\vcvarsall.bat" amd64 -vcvars_ver=14.3
+                      call C:\\BuildTools\\Common7\\Tools\\VsDevCmd.bat -arch=amd64 -host_arch=amd64 -vcvars_ver=14.3
 
-                      cmake.exe "-GNinja" "-DBOOST_PREFIX=C:\\Boost" "-DBOOST_DYNAMIC=${env.SHARED_LIBS}" "-DWT_WRASTERIMAGE_IMPLEMENTATION=none" "-DBUILD_EXAMPLES=ON" "-DBUILD_TESTS=ON" "-DCONNECTOR_FCGI=OFF" "-DCONNECTOR_HTTP=ON" "-DEXAMPLES_CONNECTOR=wthttp" "-DENABLE_HARU=OFF" "-DENABLE_PANGO=OFF" "-DENABLE_POSTGRES=OFF" "-DENABLE_QT4=OFF" "-DENABLE_SQLITE=ON" "-DENABLE_SSL=OFF" "-DHTTP_WITH_ZLIB=OFF" -DMULTI_THREADED=ON -DSHARED_LIBS=${env.SHARED_LIBS} ..\\
+                      cmake.exe ^
+                        "-GNinja" ^
+                        "-DBOOST_PREFIX=C:\\Boost" ^
+                        "-DBOOST_DYNAMIC=${env.SHARED_LIBS}" ^
+                        "-DWT_WRASTERIMAGE_IMPLEMENTATION=none" ^
+                        "-DBUILD_EXAMPLES=ON" ^
+                        "-DBUILD_TESTS=ON" ^
+                        "-DCONNECTOR_FCGI=OFF" ^
+                        "-DCONNECTOR_HTTP=ON" ^
+                        "-DEXAMPLES_CONNECTOR=wthttp" ^
+                        "-DENABLE_HARU=OFF" ^
+                        "-DENABLE_PANGO=OFF" ^
+                        "-DENABLE_POSTGRES=OFF" ^
+                        "-DENABLE_QT4=OFF" ^
+                        "-DENABLE_SQLITE=ON" ^
+                        "-DENABLE_SSL=OFF" ^
+                        "-DHTTP_WITH_ZLIB=OFF" ^
+                        -DMULTI_THREADED=ON ^
+                        -DSHARED_LIBS=${env.SHARED_LIBS} ^
+                        ..\\
                     """;
               }
             }
@@ -46,7 +68,7 @@ pipeline {
             steps {
               dir("build-shared-${env.SHARED_LIBS}") {
                 bat """
-                      call "C:\\BuildTools\\VC\\Auxiliary\\Build\\vcvarsall.bat" amd64 -vcvars_ver=14.3
+                      call C:\\BuildTools\\Common7\\Tools\\VsDevCmd.bat -arch=amd64 -host_arch=amd64 -vcvars_ver=14.3
 
                       ninja -v
                     """;
@@ -59,9 +81,13 @@ pipeline {
                 warnError('test.wt failed') {
                   bat """
                         set BuildDir=${env.WORKSPACE}\\build-shared-${env.SHARED_LIBS}
-                        set Path=%BuildDir%\\src;C:\\Boost\\lib;%Path%
+                        set Path=C:\\Boost\\lib;%Path%
+                        set Path=%BuildDir%\\src;%Path%
 
-                        ..\\build-shared-${env.SHARED_LIBS}\\test\\test.wt --log_format=JUNIT --log_level=all --log_sink=${env.WORKSPACE}/wt_shared_${env.SHARED_LIBS}_test_log.xml
+                        ..\\build-shared-${env.SHARED_LIBS}\\test\\test.wt ^
+                          --log_format=JUNIT ^
+                          --log_level=all ^
+                          --log_sink=${env.WORKSPACE}/wt_shared_${env.SHARED_LIBS}_test_log.xml
                       """;
                 }
               }
@@ -73,9 +99,14 @@ pipeline {
                 warnError('test.http failed') {
                   bat """
                         set BuildDir=${env.WORKSPACE}\\build-shared-${env.SHARED_LIBS}
-                        set Path=%BuildDir%\\src;%BuildDir%\\src\\http;C:\\Boost\\lib;%Path%
+                        set Path=C:\\Boost\\lib;%Path%
+                        set Path=%BuildDir%\\src;%Path%
+                        set Path=%BuildDir%\\src\\http;%Path%
 
-                        ..\\build-shared-${env.SHARED_LIBS}\\test\\test.http --log_format=JUNIT --log_level=all --log_sink=${env.WORKSPACE}/http_shared_${env.SHARED_LIBS}_test_log.xml
+                        ..\\build-shared-${env.SHARED_LIBS}\\test\\test.http ^
+                          --log_format=JUNIT ^
+                          --log_level=all ^
+                          --log_sink=${env.WORKSPACE}/http_shared_${env.SHARED_LIBS}_test_log.xml
                       """;
                 }
               }
@@ -87,9 +118,15 @@ pipeline {
                 warnError('test.sqlite3 failed') {
                   bat """
                         set BuildDir=${env.WORKSPACE}\\build-shared-${env.SHARED_LIBS}
-                        set Path=%BuildDir%\\src;%BuildDir%\\src\\Wt\\Dbo;%BuildDir%\\src\\Wt\\Dbo\\backend;C:\\Boost\\lib;%Path%
+                        set Path=C:\\Boost\\lib;%Path%
+                        set Path=%BuildDir%\\src;%Path%
+                        set Path=%BuildDir%\\src\\Wt\\Dbo;%Path%
+                        set Path=%BuildDir%\\src\\Wt\\Dbo\\backend;%Path%
 
-                        ..\\build-shared-${env.SHARED_LIBS}\\test\\test.sqlite3 --log_format=JUNIT --log_level=all --log_sink=${env.WORKSPACE}/sqlite3_shared_${env.SHARED_LIBS}_test_log.xml
+                        ..\\build-shared-${env.SHARED_LIBS}\\test\\test.sqlite3 ^
+                          --log_format=JUNIT ^
+                          --log_level=all ^
+                          --log_sink=${env.WORKSPACE}/sqlite3_shared_${env.SHARED_LIBS}_test_log.xml
                       """;
                 }
               }

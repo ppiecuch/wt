@@ -9,23 +9,24 @@
 #define TOPIC_TEMPLATE_H_
 
 #include "Sample.h"
+#include "BaseTemplate.h"
 
-#include <Wt/WTemplate.h>
-
-class TopicTemplate : public Wt::WTemplate
-{
+class TopicTemplate : public BaseTemplate {
 public:
-  TopicTemplate(const char *trKey);
+  explicit TopicTemplate(const char *trKey);
 
   virtual void resolveString(const std::string& varName,
                              const std::vector<Wt::WString>& args,
                              std::ostream& result);
 
 private:
-  std::string docUrl(const std::string& className);
+  std::string docUrl(const std::string& type,
+                     const std::string& className);
   std::string getString(const std::string& varName);
 
   static std::string escape(const std::string& name);
+
+  std::map<std::string, std::string> namespaceToPackage;
 };
 
 #endif // TOPIC_TEMPLATE_H_

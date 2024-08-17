@@ -8,6 +8,7 @@
 #define WAPPLICATION_
 
 #include <chrono>
+#include <unordered_map>
 #include <vector>
 #include <string>
 #include <set>
@@ -55,6 +56,10 @@ class WebSession;
 class RootContainer;
 class UpdateLockImpl;
 class SoundManager;
+
+  namespace Http {
+    class Cookie;
+  }
 
 /*! \brief Typedef for a function that creates WApplication objects.
  *
@@ -462,6 +467,54 @@ public:
    * \sa setHtmlClass()
    */
   std::string htmlClass() const { return htmlClass_; }
+
+  /*! \brief Sets an attribute for the entire page &lt;html&gt; element.
+   *
+   * This allows you to set any of the global attributes (see:
+   * https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes)
+   * on the &lt;html&gt; tag. As well as any tags specific to that tag
+   * (see: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/html).
+   *
+   * \note If the \p value contains more complex JavaScript, make sure
+   * that \p " and \p ' are properly escaped. Otherwise you may encounter
+   * JavaScript errors.
+   *
+   * \note This can control the &lt;html&gt;'s \p class, \p dir, and
+   * \p lang as well, but this should generally be avoided, since the
+   * application manages that separately.
+   *
+   * \sa htmlAttribute(), setBodyAttribute()
+   */
+  void setHtmlAttribute(const std::string& name, const std::string& value);
+
+  /*! \brief Returns the current &lt;html&gt; element attribute value of
+   * the specified \p name.
+   *
+   * \sa setHtmlAttribute(), bodyAttribute()
+   */
+  WString htmlAttribute(const std::string& name) const;
+
+  /*! \brief Sets an attribute for the entire page &lt;body&gt; element.
+   *
+   * This allows you to set any of the global attributes (see:
+   * https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes)
+   * on the &lt;body&gt; tag. As well as any tags specific to that tag
+   * (see: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body).
+   *
+   * \note If the \p value contains more complex JavaScript, make sure
+   * that \p " and \p ' are properly escaped. Otherwise you may encounter
+   * JavaScript errors.
+   *
+   * \sa bodyAttribute(), setHtmlAttribute()
+   */
+  void setBodyAttribute(const std::string& name, const std::string& value);
+
+  /*! \brief Returns the current &lt;body&gt; element attribute value of
+   * the specified \p name.
+   *
+   * \sa setBodyAttribute(), htmlAttribute()
+   */
+  WString bodyAttribute(const std::string& name) const;
   //!@}
 
   /*! \brief Sets the window title.
@@ -1637,6 +1690,27 @@ public:
    *
    * Use cookies to transfer information across different sessions
    * (e.g. a user name). In a subsequent session you will be able to
+   * read this cookie using WEnvironment::getCookie().  You cannot use
+   * a cookie to store information in the current session.
+   *
+   * For more information on how to configure cookies, see the Http::Cookie
+   * class.
+   *
+   * \if cpp
+   * \note %Wt provides session tracking automatically, and may be configured
+   *       to use a cookie for this. You only need to use cookies yourself
+   *       if you want to remember some information (like a logged in identity)
+   *       <i>across sessions</i>.
+   * \endif
+   *
+   * \sa WEnvironment::supportsCookies(), WEnvironment::getCookie()
+   */
+  void setCookie(const Http::Cookie& cookie);
+
+  /*! \brief Sets a new cookie.
+   *
+   * Use cookies to transfer information across different sessions
+   * (e.g. a user name). In a subsequent session you will be able to
    * read this cookie using WEnvironment::getCookie(). You cannot use
    * a cookie to store information in the current session.
    *
@@ -1657,7 +1731,10 @@ public:
    * \endif
    *
    * \sa WEnvironment::supportsCookies(), WEnvironment::getCookie()
+   *
+   * \deprecated Use setCookie(const Http::Cookie&) instead.
    */
+  WT_DEPRECATED("Use setCookie(const Http::Cookie&) instead, the Http::Cookie class allows easier configuration of cookie attributes.")
   void setCookie(const std::string& name, const std::string& value,
                  int maxAge, const std::string& domain = "",
                  const std::string& path = "", bool secure = false);
@@ -1670,10 +1747,22 @@ public:
 
   /*! \brief Removes a cookie.
    *
-   * \sa setCookie()
+   * The cookie will be removed if it has the same name, domain and path as the original
+   * cookie (RFC-6265, section 5.3.11).
+   *
+   * \sa setCookie(const Http::Cookie&)
    */
+  void removeCookie(const Http::Cookie& cookie);
+
+  /*! \brief Removes a cookie.
+   *
+   * \sa setCookie()
+   *
+   * \deprecated Use removeCookie(const Http::Cookie&) instead.
+   */
+  WT_DEPRECATED("Use removeCookie(const Http::Cookie&) instead, the Http::Cookie class allows easier configuration of cookie attributes.")
   void removeCookie(const std::string& name, const std::string& domain = "",
-                    const std::string& path = "");
+		    const std::string& path = "");
 
   /*! \brief Adds an HTML meta link.
    *
@@ -2305,6 +2394,9 @@ private:
   std::string focusId_;
   int selectionStart_, selectionEnd_;
   LayoutDirection layoutDirection_;
+  std::unordered_map<std::string, std::string> htmlAttributes_;
+  std::unordered_map<std::string, std::string> bodyAttributes_;
+  bool htmlAttributeChanged_, bodyAttributeChanged_;
 
   std::vector<ScriptLibrary> scriptLibraries_;
   int scriptLibrariesAdded_;
@@ -2346,6 +2438,9 @@ private:
 
   WContainerWidget *timerRoot() const { return timerRoot_; }
   WEnvironment& env(); // short-hand for session_->env()
+
+  const std::unordered_map<std::string, std::string>& htmlAttributes() const { return htmlAttributes_; }
+  const std::unordered_map<std::string, std::string>& bodyAttributes() const { return bodyAttributes_; }
 
   /*
    * Functions for exposed signals, resources, and objects

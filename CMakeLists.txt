@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.1...3.14)
+cmake_minimum_required(VERSION 3.13...3.22)
 
 SET(CMAKE_INCLUDE_DIRECTORIES_PROJECT_BEFORE true)
 
@@ -13,8 +13,8 @@ SET(CMAKE_MODULE_PATH
 SET(CMAKE_PREFIX_PATH "~/Qt/5.15/clang_64")
 
 SET(VERSION_SERIES 4)
-SET(VERSION_MAJOR 8)
-SET(VERSION_MINOR 2)
+SET(VERSION_MAJOR 10)
+SET(VERSION_MINOR 4)
 
 #
 # Various things that must be configured by the user or packager ...
@@ -24,10 +24,10 @@ OPTION(BUILD_EXAMPLES "Build examples" ON)
 OPTION(INSTALL_DOCUMENTATION "Install documentation (tutorials and reference)" OFF)
 OPTION(INSTALL_EXAMPLES "Install examples (binaries and source)" OFF)
 OPTION(INSTALL_RESOURCES "Install resources directory" ON)
+option(INSTALL_THEMES "Install the source files for Wt's themes" ON)
 OPTION(ENABLE_SSL "Enable cryptography functions, using OpenSSL" ON)
 OPTION(ENABLE_HARU "Enable Haru Free PDF Library, which is used to provide support for painting to PDF (WPdfImage)" ON)
 OPTION(ENABLE_PANGO "Enable Pango Library, which is used for improved font support (WPdfImage and WRasterImage)" ON)
-OPTION(ENABLE_EXT "Build Wt Ext library with JavaScript-only widgets (http://extjs.com/) DEPRECATED" OFF)
 OPTION(ENABLE_SQLITE "Build SQLite3 backend for Wt::Dbo" ON)
 OPTION(ENABLE_POSTGRES "Build PostgreSQL backend for Wt::Dbo" ON)
 OPTION(ENABLE_FIREBIRD "Build FirebirdSQL backend for Wt::Dbo" ON)
@@ -39,8 +39,6 @@ OPTION(ENABLE_QT6 "Build Qt6 interworking library (libwtwithqt6)" ON)
 OPTION(ENABLE_SAML "Build built-in SAML service provider for Wt::Auth" OFF)
 OPTION(ENABLE_LIBWTTEST "Build Wt::Test" ON)
 OPTION(ENABLE_LIBWTDBO "Build Wt::Dbo" ON)
-OPTION(WT_NO_STD_LOCALE "Build Wt to run on a system without std::locale support" OFF)
-OPTION(WT_NO_STD_WSTRING "Build Wt to run on a system without std::wstring support" OFF)
 OPTION(ENABLE_OPENGL "Build Wt with support for server-side opengl rendering" ON)
 OPTION(ENABLE_UNWIND "Build Wt with stacktrace support using libunwind" ON)
 
@@ -205,6 +203,8 @@ ELSE(CYGWIN)
   OPTION(BUILD_TESTS "Build Wt tests" OFF)
 ENDIF(CYGWIN)
 
+OPTION(BUILD_FUZZ "Build Wt fuzzers" OFF)
+
 ADD_DEFINITIONS(-DWT_WITH_OLD_INTERNALPATH_API)
 IF(CYGWIN)
   ADD_DEFINITIONS(-D__USE_W32_SOCKETS)
@@ -248,10 +248,15 @@ INCLUDE(cmake/WtFindFcgi.txt)
 INCLUDE(cmake/WtFindMysql.txt)
 INCLUDE(cmake/WtFindPostgresql.txt)
 INCLUDE(cmake/WtFindOdbc.txt)
-INCLUDE(cmake/WtFindAsciidoc.txt)
-INCLUDE(cmake/WtFindHaru.txt)
 INCLUDE(cmake/WtFindGm.txt)
-INCLUDE(cmake/WtFindGL.txt)
+
+find_package(OpenGL)
+find_package(GLEW)
+
+find_package(Asciidoctor)
+
+set(HPDF_ROOT ${HARU_PREFIX})
+find_package(HPDF)
 
 IF(APPLE)
   # This is a bug in CMake that causes it to prefer the system version over
@@ -302,6 +307,8 @@ IF(MULTI_THREADED)
   find_package(Threads)
   set(WT_THREAD_LIB Threads::Threads)
 ENDIF(MULTI_THREADED)
+
+find_package(Atomics REQUIRED)
 
 IF(NOT BOOST_WT_FOUND)
   SET(ERR
@@ -432,9 +439,6 @@ IF(WIN32)
     # is not set, but this is problematic for cygwin
     ADD_DEFINITIONS(-DBOOST_THREAD_USE_LIB)
   ENDIF(BOOST_DYNAMIC)
-  IF(HARU_DYNAMIC)
-    ADD_DEFINITIONS(-DHPDF_DLL)
-  ENDIF(HARU_DYNAMIC)
   ADD_DEFINITIONS(
       -D_CRT_SECURE_NO_WARNINGS
       -D_SCL_SECURE_NO_WARNINGS
@@ -459,24 +463,34 @@ ELSE(INSTALL_DOCUMENTATION)
   ADD_CUSTOM_TARGET(doc)
 ENDIF(INSTALL_DOCUMENTATION)
 
-IF (ASCIIDOC_FOUND)
-  MACRO (ASCIIDOC_FILE target infile outfile)
-    ADD_CUSTOM_TARGET(${target}
-       ${ASCIIDOC_EXECUTABLE} -a toc -a numbered -a icons -a  theme=emweb -a pygments -a linkcss -o ${outfile} ${infile}
-       COMMENT "Asciidoc ${infile}")
-    ADD_DEPENDENCIES(doc ${target})
-  ENDMACRO (ASCIIDOC_FILE)
-ENDIF (ASCIIDOC_FOUND)
+if(ASCIIDOCTOR_FOUND)
+  macro(ASCIIDOC_FILE target infile outfile)
+    add_custom_target(${target}
+      Asciidoctor::asciidoctor
+        -a toc
+        -a numbered
+        -a icons=font
+        -a source-highlighter=highlight.js
+        -a linkcss
+        -a stylesheet=wt.css
+        -o "${outfile}"
+        "${infile}"
+       DEPENDS "${infile}"
+       BYPRODUCTS "${outfile}"
+       COMMENT "Asciidoctor ${infile}")
+    add_dependencies(doc ${target})
+  endmacro()
+endif()
 
 IF (DOXYGEN_FOUND)
   ADD_CUSTOM_TARGET(doxygen
     ${DOXYGEN_EXECUTABLE}
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    WORKING_DIRECTORY ${WT_SOURCE_DIR}
     COMMENT "Doxygen ...")
   ADD_DEPENDENCIES(doc doxygen)
   ADD_CUSTOM_TARGET(doxygen-examples
     ${DOXYGEN_EXECUTABLE}
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/examples
+    WORKING_DIRECTORY ${WT_SOURCE_DIR}/examples
     COMMENT "Doxygen for examples ...")
   ADD_DEPENDENCIES(doc doxygen-examples)
 ENDIF (DOXYGEN_FOUND)
@@ -511,24 +525,36 @@ IF(BUILD_TESTS)
   SUBDIRS(test)
 ENDIF(BUILD_TESTS)
 
+IF(BUILD_FUZZ)
+  SUBDIRS(fuzz)
+ENDIF(BUILD_FUZZ)
+
 IF(INSTALL_RESOURCES)
-INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/resources DESTINATION
+  INSTALL(DIRECTORY ${WT_SOURCE_DIR}/resources DESTINATION
     ${CMAKE_INSTALL_PREFIX}/share/Wt/)
 ENDIF(INSTALL_RESOURCES)
 
+if(INSTALL_THEMES)
+  install(DIRECTORY ${WT_SOURCE_DIR}/src/themes
+          DESTINATION ${CMAKE_INSTALL_PREFIX}/share/Wt/
+          PATTERN "node_modules" EXCLUDE)
+endif()
+
 IF(INSTALL_EXAMPLES)
-  INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/examples/ DESTINATION
-      ${CMAKE_INSTALL_PREFIX}/${EXAMPLES_DESTINATION} PATTERN "examples/*")
+  INSTALL(DIRECTORY ${WT_SOURCE_DIR}/examples/
+          DESTINATION ${CMAKE_INSTALL_PREFIX}/${EXAMPLES_DESTINATION}
+          PATTERN "examples/*"
+          PATTERN "node_modules" EXCLUDE)
 ENDIF(INSTALL_EXAMPLES)
 
 IF(INSTALL_DOCUMENTATION)
-  INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/doc/reference/html DESTINATION
+  INSTALL(DIRECTORY ${WT_SOURCE_DIR}/doc/reference/html DESTINATION
     ${CMAKE_INSTALL_PREFIX}/${DOCUMENTATION_DESTINATION}/reference)
-  INSTALL(FILES ${PROJECT_SOURCE_DIR}/doc/reference/wt.qch DESTINATION
+  INSTALL(FILES ${WT_SOURCE_DIR}/doc/reference/wt.qch DESTINATION
     ${CMAKE_INSTALL_PREFIX}/${DOCUMENTATION_DESTINATION}/reference)
-  INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/doc/examples/html DESTINATION
+  INSTALL(DIRECTORY ${WT_SOURCE_DIR}/doc/examples/html DESTINATION
     ${CMAKE_INSTALL_PREFIX}/${DOCUMENTATION_DESTINATION}/examples)
-  INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/doc/tutorial DESTINATION
+  INSTALL(DIRECTORY ${WT_SOURCE_DIR}/doc/tutorial DESTINATION
     ${CMAKE_INSTALL_PREFIX}/${DOCUMENTATION_DESTINATION})
 ENDIF(INSTALL_DOCUMENTATION)
 
@@ -536,10 +562,10 @@ IF(NOT EXISTS ${CONFIGDIR}/wt_config.xml)
   INSTALL(FILES ${WT_BINARY_DIR}/wt_config.xml DESTINATION ${CONFIGDIR})
 ENDIF (NOT EXISTS ${CONFIGDIR}/wt_config.xml)
 
-IF(ENABLE_HARU AND HARU_FOUND)
-  SET(HAVE_HARU ON)
-  SET(WT_HAS_WPDFIMAGE true)
-ENDIF(ENABLE_HARU AND HARU_FOUND)
+if(ENABLE_HARU AND HPDF_FOUND)
+  set(HAVE_HARU ON)
+  set(WT_HAS_WPDFIMAGE true)
+endif()
 
 IF(ENABLE_SSL AND OPENSSL_FOUND)
   SET(HAVE_SSL ON)
@@ -550,10 +576,9 @@ IF(ENABLE_PANGO AND PANGO_FT2_FOUND)
   SET(HAVE_PANGO ON)
 ENDIF(ENABLE_PANGO AND PANGO_FT2_FOUND)
 
-IF(ENABLE_OPENGL AND GL_FOUND AND WT_HAS_WRASTERIMAGE)
-  SET(WT_USE_OPENGL TRUE)
-  SET(HAVE_GL TRUE)
-ENDIF(ENABLE_OPENGL AND GL_FOUND AND WT_HAS_WRASTERIMAGE)
+if(ENABLE_OPENGL AND OPENGL_FOUND AND GLEW_FOUND AND WT_HAS_WRASTERIMAGE)
+  set(WT_USE_OPENGL TRUE)
+endif()
 
 IF(ENABLE_UNWIND AND UNWIND_FOUND)
   SET(HAVE_UNWIND ON)

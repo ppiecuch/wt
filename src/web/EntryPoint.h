@@ -4,14 +4,14 @@
  *
  * All rights reserved.
  */
+#ifndef ENTRYPOINT_H
+#define ENTRYPOINT_H
 
 #include "Wt/WApplication.h"
 #include "Wt/WGlobal.h"
 
 #include <deque>
 
-#ifndef ENTRYPOINT_H
-#define ENTRYPOINT_H
 namespace Wt {
 
 class WT_API EntryPoint {
@@ -20,6 +20,7 @@ public:
              const std::string& path,
              const std::string& favicon);
   EntryPoint(WResource *resource, const std::string& path);
+  EntryPoint(const std::shared_ptr<WResource>& resource, const std::string& path);
   ~EntryPoint();
 
   void setPath(const std::string& path);
@@ -33,6 +34,7 @@ public:
 private:
   EntryPointType type_;
   WResource *resource_;
+  std::shared_ptr<WResource> ownedResource_;
   ApplicationCreator appCallback_;
   std::string path_;
   std::string favicon_;
@@ -41,21 +43,25 @@ private:
 typedef std::deque<EntryPoint> EntryPointList;
 
 struct WT_API EntryPointMatch {
-  EntryPointMatch()
+  EntryPointMatch() noexcept
     : entryPoint(nullptr),
-      extra(0)
+      extraStartIndex(0)
   { }
 
   EntryPointMatch(
       const EntryPoint *ep,
-      std::size_t x)
+      std::size_t extraStartIndex) noexcept
     : entryPoint(ep),
-      extra(x)
+      extraStartIndex(extraStartIndex)
   { }
+
+  bool operator<(const EntryPointMatch& other) const noexcept;
+
+  std::size_t depth() const noexcept;
 
   const EntryPoint *entryPoint;
   std::vector<std::pair<std::string, std::string> > urlParams;
-  std::size_t extra;
+  std::size_t extraStartIndex;
 };
 
 }

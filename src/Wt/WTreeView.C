@@ -270,6 +270,8 @@ public:
 
   WWidget *cellWidget(int column);
 
+  void updateDom(DomElement& element, bool all) final;
+
 private:
   WTreeView *view_;
   WTemplate *nodeWidget_;
@@ -935,6 +937,36 @@ void WTreeViewNode::selfCheck()
     assert(topSpacerHeight() + childNodesHeight + bottomSpacerHeight()
            == childrenHeight());
   }
+}
+
+void WTreeViewNode::updateDom(DomElement& element, bool all)
+{
+  if (view_->isDisabled()) {
+    addStyleClass("Wt-disabled");
+    nodeWidget_->addStyleClass("Wt-disabled");
+
+    auto widget = nodeWidget_->resolveWidget("cols-row");
+    if (widget) {
+      widget->addStyleClass("Wt-disabled");
+    }
+
+    widget = nodeWidget_->resolveWidget("expand");
+    if (widget) {
+      widget->addStyleClass("Wt-disabled");
+    }
+
+    widget = nodeWidget_->resolveWidget("no-expand");
+    if (widget) {
+      widget->addStyleClass("Wt-disabled");
+    }
+
+    widget = nodeWidget_->resolveWidget("col0");
+    if (widget) {
+      widget->addStyleClass("Wt-disabled");
+    }
+  }
+
+  WContainerWidget::updateDom(element, all);
 }
 
 WTreeView::WTreeView()
@@ -1739,7 +1771,7 @@ bool WTreeView::isExpandedRecursive(const WModelIndex& index) const
     if (index != rootIndex())
       return isExpanded(index.parent());
     else
-      return false;
+      return true;
   } else
     return false;
 }

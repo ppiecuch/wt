@@ -26,6 +26,7 @@ namespace Wt {
 }
 
 #define SSL_CLIENT_CERTIFICATES_HEADER "X-Wt-Ssl-Client-Certificates"
+#define WT_REDIRECT_SECRET_HEADER "X-Wt-Redirect-Secret"
 
 namespace http {
 namespace server {
@@ -46,8 +47,9 @@ ProxyReply::ProxyReply(Request& request,
 
 ProxyReply::~ProxyReply()
 {
-  if (sessionProcess_ && sessionProcess_->sessionId().empty())
-    sessionProcess_->stop();
+  if (sessionProcess_ && sessionProcess_->sessionId().empty()) {
+    sessionProcess_->requestStop();
+  }
 
   closeClientSocket();
 }
@@ -64,8 +66,9 @@ void ProxyReply::closeClientSocket()
 
 void ProxyReply::reset(const Wt::EntryPoint *ep)
 {
-  if (sessionProcess_ && sessionProcess_->sessionId().empty())
-    sessionProcess_->stop();
+  if (sessionProcess_ && sessionProcess_->sessionId().empty()) {
+    sessionProcess_->requestStop();
+  }
   sessionProcess_.reset();
 
   closeClientSocket();
@@ -250,6 +253,7 @@ void ProxyReply::assembleRequestHeaders()
   std::ostream os(&requestBuf_);
   os << request_.method << " " << request_.uri << " HTTP/1.1\r\n";
   bool establishWebSockets = false;
+  bool redirectSecretSent = false;
   std::string forwardedFor;
   std::string forwardedProto = request_.urlScheme;
   std::string forwardedPort;
@@ -303,6 +307,13 @@ void ProxyReply::assembleRequestHeaders()
       } else {
         LOG_SECURE("wthttp is not behind a trusted reverse proxy, dropping " << it->name.str() << " header");
       }
+    } else if (it->name.iequals(WT_REDIRECT_SECRET_HEADER)) {
+      if (trustedProxy) {
+        redirectSecretSent = true;
+        os << it->name << ": " << it->value << "\r\n";
+      } else {
+        LOG_SECURE("wthttp is not behind a trusted reverse proxy, dropping " << it->name.str() << " header");
+      }
     } else if (it->name.length() > 0) {
       os << it->name << ": " << it->value << "\r\n";
     }
@@ -330,8 +341,12 @@ void ProxyReply::assembleRequestHeaders()
   }
 
   // Append redirect secret
-  os << "Redirect-Secret: "
-     <<  Wt::WServer::instance()->controller()->redirectSecret_ << "\r\n";
+  if (!redirectSecretSent) {
+    os << WT_REDIRECT_SECRET_HEADER << ": "
+       << Wt::WServer::instance()->controller()->redirectSecret_
+       << "\r\n";
+  }
+
   os << "\r\n";
 
   fwCertificates_ = false;
@@ -537,7 +552,7 @@ std::string ProxyReply::getSessionId() const
     if (cookieHeader) {
       std::string cookie = cookieHeader->value.str();
       sessionId = Wt::WebController::sessionFromCookie
-        (cookie.c_str(), request_.request_path,
+        (cookie.c_str(), request_.request_path.substr(request_.extra_start_index),
          wtConfiguration.fullSessionIdLength());
     }
   }

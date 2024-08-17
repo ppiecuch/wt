@@ -12,8 +12,10 @@
 #include "StockReply.h"
 #include "MimeTypes.h"
 
+#include "DateUtils.h"
 #include "FileUtils.h"
 
+#include "Wt/cpp20/date.hpp"
 #include "Wt/WLogger.h"
 
 using namespace BOOST_SPIRIT_CLASSIC_NS;
@@ -63,7 +65,7 @@ void StaticReply::reset(const Wt::EntryPoint *ep)
 
   hasRange_ = false;
 
-  std::string request_path = request_.request_path;
+  std::string request_path = request_.request_path.substr(request_.extra_start_index);
 
   // Request path for a static file must be absolute and not contain "..".
   if (request_path.empty() || request_path[0] != '/'
@@ -184,7 +186,7 @@ void StaticReply::reset(const Wt::EntryPoint *ep)
   const Request::Header *ua = request_.getHeader("User-Agent");
 
   if (!ua || !ua->value.contains("MSIE")) {
-    addHeader("Cache-Control", "max-age=3600");
+    addHeader("Cache-Control", configuration().staticCacheControl());
     if (!etag.empty())
       addHeader("ETag", etag);
 
@@ -210,7 +212,7 @@ void StaticReply::reset(const Wt::EntryPoint *ep)
 
 std::string StaticReply::computeModifiedDate() const
 {
-  return httpDate(Wt::FileUtils::lastWriteTime(path_));
+  return Wt::DateUtils::httpDate(Wt::FileUtils::lastWriteTime(path_));
 }
 
 std::string StaticReply::computeETag() const
@@ -220,9 +222,7 @@ std::string StaticReply::computeETag() const
 
 std::string StaticReply::computeExpires()
 {
-  time_t t = time(0);
-  t += 3600*24*31;
-  return httpDate(t);
+  return Wt::DateUtils::httpDate(std::chrono::system_clock::now() + Wt::cpp20::date::days(31));
 }
 
 bool StaticReply::consumeData(const char *begin,
